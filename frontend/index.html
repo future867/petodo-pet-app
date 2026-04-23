@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Petodo 像素桌宠番茄钟</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="hero">
+      <p class="eyebrow">Petodo 桌面应用</p>
+      <h1>像素小猫番茄钟</h1>
+      <p class="description">当前模块提供番茄钟控制，并可以打开或关闭独立桌宠窗口。</p>
+    </section>
+
+    <section class="status-panel">
+      <h2>番茄钟状态</h2>
+      <p>当前模式：<strong id="modeText">idle</strong></p>
+      <p>剩余时间：<strong id="timeText">00:00</strong></p>
+
+      <div class="button-row">
+        <button id="startButton" type="button">开始</button>
+        <button id="pauseButton" type="button">暂停</button>
+        <button id="resetButton" type="button">重置</button>
+      </div>
+
+      <p id="statusText">正在读取后端状态...</p>
+    </section>
+
+    <section class="status-panel">
+      <h2>桌宠窗口</h2>
+      <p>桌宠状态：<strong id="petStatusText">未打开</strong></p>
+
+      <div class="button-row">
+        <button id="openPetButton" type="button">打开桌宠</button>
+        <button id="closePetButton" type="button">关闭桌宠</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
