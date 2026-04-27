@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from models import PetInteractionRequest, PetStatus, TimerStatus
+from models import FeedRequest, FeedResult, PetInteractionRequest, PetStatus, TimerStatus
 from pet_logic import PetStateMachine
 from timer_logic import PomodoroTimer
 
@@ -61,3 +61,13 @@ def get_pet_status():
 @app.post("/pet/interact", response_model=PetStatus)
 def interact_with_pet(request: PetInteractionRequest):
     return pet.update_pet_state(timer.status(), request.interaction)
+
+
+@app.post("/pet/feed", response_model=FeedResult)
+def feed_pet(request: FeedRequest):
+    return pet.feed(timer.status(), request.food_id)
+
+
+@app.post("/pet/decay", response_model=PetStatus)
+def decay_pet():
+    return pet.decay_now(timer.status())

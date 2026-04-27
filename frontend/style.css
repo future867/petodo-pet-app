@@ -89,81 +89,188 @@ button:hover {
 }
 
 .pet-body {
-  display: grid;
+  width: 100vw;
+  height: 100vh;
   min-height: 100vh;
-  place-items: center;
   background: transparent;
   overflow: hidden;
   -webkit-user-select: none;
   user-select: none;
 }
 
-.pet-window-drag-area {
+#pet-root {
+  position: relative;
   display: grid;
   width: 100vw;
   height: 100vh;
   place-items: center;
-  cursor: move;
+  overflow: hidden;
   -webkit-app-region: drag;
 }
 
-.pixel-cat {
-  width: 120px;
-  height: 96px;
-  image-rendering: pixelated;
-  position: relative;
+#pet-img {
+  display: block;
+  width: 180px;
+  max-width: calc(100vw - 20px);
+  max-height: calc(100vh - 20px);
+  height: auto;
+  object-fit: contain;
+  pointer-events: none;
+  background: transparent;
+  -webkit-user-drag: none;
 }
 
-.cat-head {
+#timer-bubble {
   position: absolute;
-  left: 18px;
-  top: 22px;
-  width: 84px;
-  height: 58px;
-  border: 4px solid #2f2a24;
-  background: #f3b35c;
-}
-
-.cat-head::before,
-.cat-head::after {
-  content: "";
-  position: absolute;
-  top: -24px;
-  width: 24px;
-  height: 24px;
-  border: 4px solid #2f2a24;
-  background: #f3b35c;
-}
-
-.cat-head::before {
-  left: 4px;
-}
-
-.cat-head::after {
-  right: 4px;
-}
-
-.cat-eye {
-  position: absolute;
+  left: 50%;
   top: 18px;
-  width: 10px;
-  height: 14px;
-  background: #2f2a24;
+  z-index: 2;
+  min-width: 70px;
+  padding: 7px 13px 8px;
+  border: 3px solid #171412;
+  border-radius: 999px;
+  color: #171412;
+  background: rgba(255, 253, 248, 0.96);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
-.cat-eye.left {
-  left: 20px;
+#timer-bubble[hidden] {
+  display: none;
 }
 
-.cat-eye.right {
-  right: 20px;
+.pet-window {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
 }
 
-.cat-mouth {
+.pet-drag-zone {
   position: absolute;
-  left: 36px;
-  top: 38px;
-  width: 12px;
-  height: 6px;
-  border-bottom: 4px solid #2f2a24;
+  inset: 0;
+  -webkit-app-region: drag;
+}
+
+.pet-scene {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  pointer-events: none;
+}
+
+.pet-chip {
+  display: none;
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  margin: 0;
+  padding: 6px 12px;
+  border: 2px solid #2f2a24;
+  border-radius: 999px;
+  color: #2f2a24;
+  background: rgba(255, 248, 239, 0.94);
+  box-shadow: 0 6px 18px rgba(47, 42, 36, 0.14);
+  font-size: 13px;
+  font-weight: 700;
+  transform: translateX(-50%);
+}
+
+.pet-hitbox {
+  position: relative;
+  width: 220px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+}
+
+.pet-hitbox:hover {
+  background: transparent;
+}
+
+.pet-hitbox:focus-visible {
+  outline: 3px solid rgba(243, 179, 92, 0.95);
+  outline-offset: 8px;
+  border-radius: 28px;
+}
+
+.pet-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: transparent;
+  object-fit: contain;
+}
+
+.pet-reaction {
+  position: absolute;
+  right: 18px;
+  top: 10px;
+  padding: 3px 10px;
+  border: 2px solid #2f2a24;
+  border-radius: 999px;
+  color: #2f2a24;
+  background: rgba(255, 248, 239, 0.96);
+  font-size: 14px;
+  font-weight: 700;
+  animation: reaction-pop 0.9s ease;
+}
+
+.pet-scene[data-state="focus"] .pet-chip {
+  background: rgba(255, 239, 214, 0.96);
+}
+
+.pet-scene[data-state="rest"] .pet-chip {
+  background: rgba(236, 244, 255, 0.96);
+}
+
+.pet-scene[data-state="hungry"] .pet-chip {
+  background: rgba(255, 236, 229, 0.96);
+}
+
+.pet-scene.is-tapped .pet-art {
+  animation: pet-bounce 0.45s ease;
+}
+
+@keyframes pet-bounce {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+
+  35% {
+    transform: translateY(-6px) scale(1.03);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes reaction-pop {
+  0% {
+    transform: translateY(8px) scale(0.8);
+    opacity: 0;
+  }
+
+  20% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(-8px) scale(1.02);
+    opacity: 0;
+  }
 }

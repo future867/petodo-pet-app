@@ -3,3 +3,5 @@ backend/__pycache__/
 *.pyc
 .env
 .venv/
+backend/data/*.json
+!backend/data/.gitkeep

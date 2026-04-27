@@ -3,20 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Petodo 小猫</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Petodo 桌宠</title>
+  <link rel="stylesheet" href="pet_window.css">
 </head>
-<body class="pet-body">
-  <main class="pet-window-drag-area" aria-label="可拖动的像素小猫">
-    <div class="pixel-cat">
-      <div class="cat-head">
-        <span class="cat-eye left"></span>
-        <span class="cat-eye right"></span>
-        <span class="cat-mouth"></span>
-      </div>
+<body>
+  <main id="pet-root" data-state="idle" aria-label="可拖动的 Petodo 桌宠窗口">
+    <div id="timer-bubble" hidden>
+      <span id="timer-text">25:00</span>
     </div>
+
+    <img
+      id="pet-sprite"
+      src="assets/pet/clawd/gif/clawd-idle.gif"
+      alt="Petodo 桌宠"
+      draggable="false"
+    >
+
+    <span id="debug-hint">按 0-9 切换桌宠状态</span>
   </main>
 
+  <script src="petRenderer.js"></script>
   <script src="pet_window.js"></script>
 </body>
 </html>
