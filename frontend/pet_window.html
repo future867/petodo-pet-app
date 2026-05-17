@@ -14,10 +14,45 @@
 
     <img
       id="pet-sprite"
-      src="assets/pet/clawd/gif/clawd-idle.gif"
+      src="assets/pet/luoxiaohei/gif/luoxiaohei-idle.gif"
       alt="Petodo 桌宠"
       draggable="false"
     >
+
+    <section id="pet-tool-panel" class="pet-tool-panel" aria-label="小黑功能面板" hidden>
+      <div class="panel-header">
+        <span class="panel-title">小黑背包</span>
+        <span id="panel-status" class="panel-status">准备好了</span>
+      </div>
+
+      <div class="tool-group" aria-label="日常互动">
+        <button class="tool-button" type="button" data-action="sleep"><span>💤</span><b>睡觉</b></button>
+        <button class="tool-button" type="button" data-action="feed"><span>🐟</span><b>吃饭</b></button>
+        <button class="tool-button" type="button" data-action="roll"><span>🌀</span><b>打滚</b></button>
+        <button class="tool-button" type="button" data-action="guitar"><span>🎸</span><b>弹吉他</b></button>
+        <button class="tool-button" type="button" data-action="scratch"><span>〽</span><b>磨爪子</b></button>
+        <button class="tool-button" type="button" data-action="tap"><span>👆</span><b>拍一拍</b></button>
+      </div>
+
+      <div class="tool-group" aria-label="学习控制">
+        <button id="timer-toggle-button" class="tool-button wide" type="button" data-action="timer-toggle">
+          <span>🍅</span><b>专注</b>
+        </button>
+        <button class="tool-button wide" type="button" data-action="timer-reset"><span>↺</span><b>重置</b></button>
+      </div>
+
+      <div class="tool-group" aria-label="桌宠控制">
+        <button id="pin-toggle-button" class="tool-button" type="button" data-action="pin"><span>📌</span><b>置顶</b></button>
+        <button class="tool-button" type="button" data-action="scale-down"><span>−</span><b>缩小</b></button>
+        <button class="tool-button" type="button" data-action="scale-up"><span>＋</span><b>放大</b></button>
+      </div>
+
+      <div class="tool-group compact" aria-label="系统操作">
+        <button class="tool-button wide" type="button" data-action="open-main"><span>🏠</span><b>主窗口</b></button>
+        <button class="tool-button wide" type="button" data-action="hide"><span>◌</span><b>隐藏</b></button>
+        <button class="tool-button danger wide" type="button" data-action="quit"><span>×</span><b>退出</b></button>
+      </div>
+    </section>
 
     <span id="debug-hint">按 0-9 切换桌宠状态</span>
   </main>

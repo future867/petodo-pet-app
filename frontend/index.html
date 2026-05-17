@@ -8,36 +8,342 @@
 </head>
 <body>
   <main class="app-shell">
-    <section class="hero">
-      <p class="eyebrow">Petodo 桌面应用</p>
-      <h1>番茄钟桌宠</h1>
-      <p class="description">主窗口负责番茄钟控制，桌宠窗口负责状态展示和互动反馈。</p>
-    </section>
-
-    <section class="status-panel">
-      <h2>番茄钟状态</h2>
-      <p>当前模式：<strong id="modeText">idle</strong></p>
-      <p>剩余时间：<strong id="timeText">00:00</strong></p>
-
-      <div class="button-row">
-        <button id="startButton" type="button">开始</button>
-        <button id="pauseButton" type="button">暂停</button>
-        <button id="resetButton" type="button">重置</button>
+    <aside class="sidebar" aria-label="主导航">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">P</span>
+        <div>
+          <p class="brand-name">Petodo</p>
+          <p class="brand-note">Study companion</p>
+        </div>
       </div>
 
-      <p id="statusText">正在读取后端状态...</p>
-    </section>
+      <nav class="nav-list">
+        <button class="nav-item is-active" type="button" data-page="home">首页</button>
+        <button class="nav-item" type="button" data-page="todo">待办清单</button>
+        <button class="nav-item" type="button" data-page="shop">补给商店</button>
+        <button class="nav-item" type="button" data-page="journal">专注记录</button>
+        <button class="nav-item" type="button" data-page="settings">设置</button>
+      </nav>
 
-    <section class="status-panel">
-      <h2>桌宠窗口</h2>
-      <p>桌宠状态：<strong id="petStatusText">未打开</strong></p>
-
-      <div class="button-row">
-        <button id="openPetButton" type="button">打开桌宠</button>
-        <button id="closePetButton" type="button">关闭桌宠</button>
+      <div class="sidebar-footer">
+        <p>Current task</p>
+        <strong id="sidebarTaskText">暂未选择任务</strong>
       </div>
+    </aside>
+
+    <section class="content">
+      <section class="page is-active" id="page-home" data-page-panel="home" aria-labelledby="homeTitle">
+        <header class="page-header">
+          <p class="eyebrow">Warm study log</p>
+          <h1 id="homeTitle">Petodo</h1>
+          <p>和小动物一起完成今天的专注。</p>
+        </header>
+
+        <section class="timer-card" aria-label="今日番茄钟">
+          <div class="timer-meta">
+            <span class="status-pill" id="homePhaseText">Focus Session</span>
+            <span id="homeCompletedText">今日已完成 3 次专注</span>
+          </div>
+          <div class="timer-display" id="homeTimeText">25:00</div>
+          <p class="task-line">正在学习：<strong id="homeTaskText">暂未选择任务</strong></p>
+
+          <div class="button-row">
+            <button class="btn btn-primary" id="homeStartButton" type="button">开始专注</button>
+            <button class="btn btn-secondary" id="homePauseButton" type="button">暂停</button>
+            <button class="btn btn-ghost" id="homeResetButton" type="button">重置</button>
+          </div>
+        </section>
+
+        <section class="note-card" aria-label="桌宠提醒">
+          <p class="note-label">小动物提醒</p>
+          <p id="homeMessageText">小动物正在陪你。</p>
+        </section>
+      </section>
+
+      <section class="page" id="page-todo" data-page-panel="todo" aria-labelledby="todoTitle">
+        <header class="page-header compact">
+          <p class="eyebrow">Today's tasks</p>
+          <h1 id="todoTitle">待办清单</h1>
+          <p>把今天要完成的任务整理好，再开始一段安静的专注。</p>
+        </header>
+
+        <div class="todo-stats" aria-label="待办统计">
+          <article class="stat-card">
+            <span>今日任务</span>
+            <strong id="todoTotalText">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>已完成</span>
+            <strong id="todoDoneText">0</strong>
+          </article>
+          <article class="stat-card wide">
+            <span>当前任务</span>
+            <strong id="todoCurrentText">暂未选择任务</strong>
+          </article>
+        </div>
+
+        <div class="todo-layout">
+          <section class="todo-form-card" aria-label="创建任务">
+            <div class="section-title">
+              <h2>创建任务</h2>
+            </div>
+
+            <form id="todoForm" class="todo-form">
+              <label class="field">
+                <span>任务名称</span>
+                <input
+                  id="todoNameInput"
+                  type="text"
+                  placeholder="高数作业、背单词、写开题报告"
+                  autocomplete="off"
+                >
+              </label>
+
+              <label class="field">
+                <span>任务类型</span>
+                <select id="todoTypeSelect">
+                  <option value="学习">学习</option>
+                  <option value="作业">作业</option>
+                  <option value="复习">复习</option>
+                  <option value="阅读">阅读</option>
+                  <option value="其他">其他</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>预计番茄数</span>
+                <select id="todoPomodoroSelect">
+                  <option value="1">1 个番茄</option>
+                  <option value="2">2 个番茄</option>
+                  <option value="3">3 个番茄</option>
+                  <option value="4">4 个番茄</option>
+                </select>
+              </label>
+
+              <button class="btn btn-primary" type="submit">添加任务</button>
+            </form>
+          </section>
+
+          <section class="todo-list-card" aria-label="今日待办任务列表">
+            <div class="section-title">
+              <h2>今日待办</h2>
+              <span id="todoListSummary">0 tasks</span>
+            </div>
+
+            <div class="todo-list" id="todoList"></div>
+
+            <div class="empty-state" id="todoEmptyState">
+              <p>今天还没有任务，先添加一个要专注完成的事项。</p>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="page" id="page-shop" data-page-panel="shop" aria-labelledby="shopTitle">
+        <header class="page-header compact">
+          <p class="eyebrow">Supply Shop</p>
+          <h1 id="shopTitle">Supply Shop / 补给商店</h1>
+          <p>用专注积分兑换小动物喜欢的补给。</p>
+        </header>
+
+        <div class="shop-list" aria-label="补给列表">
+          <article class="shop-item">
+            <div>
+              <div class="item-heading">
+                <h2>小鱼干</h2>
+                <span class="tag">轻补给</span>
+              </div>
+              <p>恢复少量饱食度。</p>
+              <p class="effect">恢复效果：饱食度 +10</p>
+            </div>
+            <div class="item-action">
+              <strong class="price">20 积分</strong>
+              <button class="btn btn-secondary redeem-button" type="button" data-item="小鱼干" data-food-id="fish">兑换</button>
+            </div>
+          </article>
+
+          <article class="shop-item">
+            <div>
+              <div class="item-heading">
+                <h2>虾仁</h2>
+                <span class="tag">日常补给</span>
+              </div>
+              <p>恢复中等饱食度。</p>
+              <p class="effect">恢复效果：饱食度 +25</p>
+            </div>
+            <div class="item-action">
+              <strong class="price">50 积分</strong>
+              <button class="btn btn-secondary redeem-button" type="button" data-item="虾仁" data-food-id="shrimp">兑换</button>
+            </div>
+          </article>
+
+          <article class="shop-item">
+            <div>
+              <div class="item-heading">
+                <h2>海鲜拼盘</h2>
+                <span class="tag">重要补给</span>
+              </div>
+              <p>大量恢复饱食度，并提升心情。</p>
+              <p class="effect">恢复效果：饱食度 +50，心情提升</p>
+            </div>
+            <div class="item-action">
+              <strong class="price">100 积分</strong>
+              <button class="btn btn-secondary redeem-button" type="button" data-item="海鲜拼盘" data-food-id="seafood_platter">兑换</button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="page" id="page-journal" data-page-panel="journal" aria-labelledby="journalTitle">
+        <header class="page-header compact">
+          <p class="eyebrow">Study Journal</p>
+          <h1 id="journalTitle">Study Journal / 专注记录</h1>
+          <p>把今天的专注变成清楚可见的记录。</p>
+        </header>
+
+        <div class="stats-grid">
+          <article class="stat-card">
+            <span>今日专注次数</span>
+            <strong id="journalTodayText">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>累计专注时长</span>
+            <strong id="journalTotalTimeText">0 min</strong>
+          </article>
+          <article class="stat-card">
+            <span>连续学习天数</span>
+            <strong id="journalStreakText">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>当前积分</span>
+            <strong class="accent-number" id="journalPointsText">0</strong>
+          </article>
+        </div>
+
+        <section class="journal-card" aria-label="最近 7 天专注记录">
+          <div class="section-title">
+            <h2>最近 7 天专注记录</h2>
+            <span>min</span>
+          </div>
+          <div class="day-list" id="journalDayList"></div>
+        </section>
+
+        <section class="journal-card" aria-label="最近完成记录">
+          <div class="section-title">
+            <h2>最近完成记录</h2>
+            <span id="journalRecentSummary">0 records</span>
+          </div>
+          <div class="recent-list" id="journalRecentList"></div>
+          <div class="empty-state" id="journalEmptyState">
+            <p>还没有完成的专注，先开始一次 25 分钟。</p>
+          </div>
+        </section>
+      </section>
+
+      <section class="page" id="page-settings" data-page-panel="settings" aria-labelledby="settingsTitle">
+        <header class="page-header compact">
+          <p class="eyebrow">Settings</p>
+          <h1 id="settingsTitle">Settings / 设置</h1>
+          <p>保持番茄钟节奏和桌宠提醒清晰可控。</p>
+        </header>
+
+        <section class="settings-card" aria-label="设置项">
+          <label class="setting-row">
+            <span>专注时长设置</span>
+            <input type="number" value="25" min="1" aria-label="专注时长设置">
+            <em>分钟</em>
+          </label>
+          <label class="setting-row">
+            <span>休息时长设置</span>
+            <input type="number" value="5" min="1" aria-label="休息时长设置">
+            <em>分钟</em>
+          </label>
+          <label class="setting-row">
+            <span>长休息时长设置</span>
+            <input type="number" value="15" min="1" aria-label="长休息时长设置">
+            <em>分钟</em>
+          </label>
+          <label class="toggle-row">
+            <span>开启声音提醒</span>
+            <input type="checkbox" checked>
+          </label>
+          <label class="toggle-row">
+            <span>开启桌宠提醒</span>
+            <input type="checkbox" checked>
+          </label>
+          <label class="toggle-row">
+            <span>开机启动</span>
+            <input type="checkbox">
+          </label>
+        </section>
+      </section>
     </section>
+
+    <aside class="companion-panel" aria-label="Companion 桌宠状态">
+      <section class="companion-card">
+        <div class="section-title">
+          <h2>Companion</h2>
+          <span class="status-dot" aria-hidden="true"></span>
+        </div>
+
+        <div class="pet-frame">
+          <img
+            id="companionImage"
+            src="assets/pet/luoxiaohei/gif/luoxiaohei-idle.gif"
+            alt="Petodo 桌宠"
+          >
+        </div>
+
+        <p class="companion-message" id="companionMessageText">小动物正在陪你</p>
+
+        <dl class="pet-stats">
+          <div>
+            <dt>当前状态</dt>
+            <dd id="companionStateText">专注中</dd>
+          </div>
+          <div>
+            <dt>饱食度</dt>
+            <dd id="hungerText">80%</dd>
+          </div>
+          <div>
+            <dt>心情</dt>
+            <dd id="moodText">平静</dd>
+          </div>
+          <div>
+            <dt>积分</dt>
+            <dd class="accent-number" id="pointsText">120</dd>
+          </div>
+        </dl>
+
+        <div class="button-stack">
+          <button class="btn btn-primary" id="feedButton" type="button">投喂</button>
+          <button class="btn btn-secondary" id="openPetButton" type="button">打开桌宠</button>
+          <button class="btn btn-ghost" id="closePetButton" type="button">关闭桌宠</button>
+        </div>
+
+        <p class="pet-window-status">桌宠窗口：<strong id="petStatusText">未打开</strong></p>
+      </section>
+    </aside>
   </main>
+
+  <section class="completion-dialog" id="completionDialog" role="dialog" aria-modal="true" aria-labelledby="completionTitle" hidden>
+    <div class="completion-backdrop"></div>
+    <div class="completion-card">
+      <div class="fireworks" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <p class="completion-label">Focus complete</p>
+      <h2 id="completionTitle">恭喜计时完成</h2>
+      <p>休息计时已经开始，小动物正在开心庆祝。</p>
+      <button class="btn btn-primary" id="completionCloseButton" type="button">知道了</button>
+    </div>
+  </section>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="renderer.js"></script>
 </body>

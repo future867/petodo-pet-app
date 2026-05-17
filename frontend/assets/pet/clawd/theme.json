@@ -34,13 +34,6 @@
       "loop": true,
       "fallbackTo": "idle"
     },
-    "hungry_light": {
-      "type": "image",
-      "path": "gif/clawd-thinking.gif",
-      "loop": true,
-      "bubble": "food?",
-      "fallbackTo": "idle"
-    },
     "hungry": {
       "type": "image",
       "path": "gif/clawd-thinking.gif",
@@ -48,18 +41,19 @@
       "bubble": "food?",
       "fallbackTo": "idle"
     },
-    "hungry_medium": {
+    "hungry_heavy": {
       "type": "image",
-      "path": "gif/clawd-error.gif",
+      "path": "gif/clawd-thinking.gif",
       "loop": true,
-      "fallbackTo": "hungry_light"
+      "bubble": "hungry",
+      "fallbackTo": "hungry"
     },
     "angry": {
       "type": "image",
       "path": "gif/clawd-error.gif",
       "loop": true,
       "movement": "run-top",
-      "fallbackTo": "hungry_medium"
+      "fallbackTo": "hungry"
     },
     "eating": {
       "type": "image",

@@ -12,13 +12,13 @@ FOODS = {
         "hunger": 10,
         "mood": 0,
     },
-    "cat_food": {
-        "name": "猫粮",
+    "shrimp": {
+        "name": "虾仁",
         "hunger": 25,
         "mood": 0,
     },
-    "can": {
-        "name": "罐头",
+    "seafood_platter": {
+        "name": "海鲜拼盘",
         "hunger": 40,
         "mood": 10,
     },
@@ -29,10 +29,13 @@ class PetStateMachine:
     def __init__(
         self,
         hunger_threshold=30,
-        angry_after_seconds=10 * 60,
+        angry_after_seconds=12 * 60 * 60,
         idle_sleep_seconds=30 * 60,
         interaction_seconds=2,
-        hunger_decay_seconds=60,
+        eating_seconds=2.2,
+        finished_eating_seconds=3,
+        happy_seconds=3,
+        hunger_decay_seconds=20 * 60,
         time_provider=None,
         datetime_provider=None,
         storage_enabled=True,
@@ -43,9 +46,12 @@ class PetStateMachine:
         self.angry_after_seconds = angry_after_seconds
         self.idle_sleep_seconds = idle_sleep_seconds
         self.interaction_seconds = interaction_seconds
+        self.eating_seconds = eating_seconds
+        self.finished_eating_seconds = finished_eating_seconds
+        self.happy_seconds = happy_seconds
         self.hunger_decay_seconds = hunger_decay_seconds
         self.storage_enabled = storage_enabled
-        self.last_interaction = None
+        self.temporary_state = None
         self.lock = Lock()
 
         now = self._now()
@@ -62,9 +68,10 @@ class PetStateMachine:
             self._decay_hunger(now)
 
             if interaction in ["drag", "tap"]:
-                self.last_interaction = {
+                self.temporary_state = {
                     "state": interaction,
                     "until": now + self.interaction_seconds,
+                    "reason": "用户正在和桌宠互动",
                 }
                 self.data["last_active_at"] = now
                 self._save()
@@ -84,6 +91,14 @@ class PetStateMachine:
             self.data["mood"] = clamp_attribute(old_mood + food["mood"])
             self.data["last_active_at"] = now
             self._update_hungry_since(now)
+            self.temporary_state = {
+                "state": "eating",
+                "until": now + self.eating_seconds,
+                "next_state": "finished_eating",
+                "next_until": now + self.eating_seconds + self.finished_eating_seconds,
+                "reason": f"正在吃{food['name']}",
+                "next_reason": "吃完后很开心",
+            }
             self._save()
 
             state, reason, temporary_active = self._choose_state(timer_status, now)
@@ -128,24 +143,36 @@ class PetStateMachine:
         self._save()
 
     def _choose_state(self, timer_status, now):
-        if self._has_active_interaction(now):
-            return self.last_interaction["state"], "用户正在和桌宠互动", True
+        temporary = self._get_temporary_state(now)
+        if temporary:
+            return temporary["state"], temporary["reason"], True
 
         if timer_status.mode == "focus":
             self.data["last_active_at"] = now
             self._save()
             return "focus", "番茄钟正在专注", False
 
+        if self._should_show_happy(timer_status, now):
+            self.data["last_active_at"] = now
+            self._save()
+            return "happy", "刚完成一次专注", True
+
         if timer_status.mode == "break":
             self.data["last_active_at"] = now
             self._save()
             return "rest", "番茄钟正在休息", False
 
-        if self._is_angry(now):
-            return "angry", "饱食度过低太久", False
+        if self.data["hunger"] < 10:
+            return "angry", "饱食度低于 10%，小动物已经非常饿", False
 
-        if self.data["hunger"] < self.hunger_threshold:
-            return "hungry", "饱食度过低", False
+        if self._is_angry(now):
+            return "angry", "重度饥饿持续太久，建议尽快投喂", False
+
+        if self.data["hunger"] < 30:
+            return "hungry_heavy", "饱食度低于 30%，进入重度饥饿", False
+
+        if self.data["hunger"] < 60:
+            return "hungry", "饱食度低于 60%，进入轻度饥饿", False
 
         if self._should_sleep(now):
             return "sleep", "长时间闲置或处于休息时间段", False
@@ -159,15 +186,33 @@ class PetStateMachine:
         else:
             self.data["hungry_since"] = None
 
-    def _has_active_interaction(self, now):
-        if not self.last_interaction:
+    def _get_temporary_state(self, now):
+        if not self.temporary_state:
+            return None
+
+        if now <= self.temporary_state["until"]:
+            return {
+                "state": self.temporary_state["state"],
+                "reason": self.temporary_state["reason"],
+            }
+
+        next_state = self.temporary_state.get("next_state")
+        next_until = self.temporary_state.get("next_until")
+        if next_state and next_until and now <= next_until:
+            return {
+                "state": next_state,
+                "reason": self.temporary_state.get("next_reason", "临时状态"),
+            }
+
+        self.temporary_state = None
+        return None
+
+    def _should_show_happy(self, timer_status, now):
+        completed_at = timer_status.last_completed_focus_completed_at
+        if completed_at is None:
             return False
 
-        if now <= self.last_interaction["until"]:
-            return True
-
-        self.last_interaction = None
-        return False
+        return 0 <= now - completed_at <= self.happy_seconds
 
     def _is_angry(self, now):
         hungry_since = self.data.get("hungry_since")

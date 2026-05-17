@@ -1,0 +1,111 @@
+{
+  "name": "luoxiaohei",
+  "displayName": "Luo Xiaohei",
+  "defaultState": "idle",
+  "states": {
+    "idle": {
+      "type": "image",
+      "path": "gif/luoxiaohei-idle.gif",
+      "loop": true
+    },
+    "focus": {
+      "type": "image",
+      "path": "gif/luoxiaohei-focus.gif",
+      "loop": true,
+      "fallbackTo": "idle"
+    },
+    "rest": {
+      "type": "image",
+      "path": "gif/luoxiaohei-rest.gif",
+      "loop": true,
+      "fallbackTo": "idle"
+    },
+    "happy": {
+      "type": "image",
+      "path": "gif/luoxiaohei-happy.gif",
+      "loop": false,
+      "duration": 3000,
+      "fallbackTo": "idle"
+    },
+    "sleep": {
+      "type": "image",
+      "path": "gif/luoxiaohei-sleep.gif",
+      "loop": true,
+      "fallbackTo": "idle"
+    },
+    "hungry": {
+      "type": "image",
+      "path": "gif/luoxiaohei-hungry.webp",
+      "loop": true,
+      "bubble": "food?",
+      "fallbackTo": "idle"
+    },
+    "hungry_heavy": {
+      "type": "image",
+      "path": "gif/luoxiaohei-hungry-heavy.gif",
+      "loop": true,
+      "bubble": "hungry",
+      "fallbackTo": "hungry"
+    },
+    "angry": {
+      "type": "image",
+      "path": "gif/luoxiaohei-angry.gif",
+      "loop": true,
+      "bubble": "hungry",
+      "fallbackTo": "hungry"
+    },
+    "eating": {
+      "type": "image",
+      "path": "gif/luoxiaohei-eating.gif",
+      "loop": true,
+      "bubble": "eating...",
+      "fallbackTo": "idle"
+    },
+    "finished_eating": {
+      "type": "image",
+      "path": "gif/luoxiaohei-finished-eating.gif",
+      "loop": false,
+      "duration": 3000,
+      "fallbackTo": "idle"
+    },
+    "drag": {
+      "type": "image",
+      "path": "gif/luoxiaohei-idle.gif",
+      "loop": false,
+      "duration": 700,
+      "fallbackTo": "idle"
+    },
+    "tap": {
+      "type": "image",
+      "path": "gif/luoxiaohei-tap.webp",
+      "loop": false,
+      "duration": 650,
+      "fallbackTo": "idle"
+    },
+    "roll": {
+      "type": "image",
+      "path": "gif/luoxiaohei-roll.gif",
+      "loop": false,
+      "duration": 1800,
+      "fallbackTo": "idle"
+    },
+    "guitar": {
+      "type": "image",
+      "path": "gif/luoxiaohei-guitar.gif",
+      "loop": false,
+      "duration": 1900,
+      "fallbackTo": "idle"
+    },
+    "scratch": {
+      "type": "image",
+      "path": "gif/luoxiaohei-scratch.gif",
+      "loop": false,
+      "duration": 1500,
+      "fallbackTo": "idle"
+    }
+  },
+  "attribution": {
+    "source": "User-selected local Luo Xiaohei GIF candidates",
+    "note": "Local coursework demo assets; drag currently reuses idle until a dedicated asset is selected."
+  }
+}
