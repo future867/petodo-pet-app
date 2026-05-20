@@ -7,3 +7,5 @@ __pycache__/
 .venv/
 backend/data/*.json
 !backend/data/.gitkeep
+NEXT_TASKS.md
+PROJECT_PROGRESS.md
