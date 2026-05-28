@@ -7,19 +7,63 @@ let petWindow = null;
 let petWindowBounds = null;
 let petWindowPanelOpen = false;
 let petWindowSettings = {
-  scale: 'medium',
+  scalePercent: 100,
   alwaysOnTop: true
 };
 
-const PET_WINDOW_SIZES = {
-  small: { width: 220, height: 220 },
-  medium: { width: 260, height: 260 },
-  large: { width: 320, height: 320 }
+const PET_SCALE_MIN = 70;
+const PET_SCALE_MAX = 140;
+const LEGACY_PET_SCALE_PERCENT = {
+  small: (140 / 180) * 100,
+  medium: 100,
+  large: (220 / 180) * 100
 };
-const PET_PANEL_SIZE = { width: 440, height: 550 };
+const PET_WINDOW_SCALE_POINTS = [
+  { percent: LEGACY_PET_SCALE_PERCENT.small, side: 220 },
+  { percent: LEGACY_PET_SCALE_PERCENT.medium, side: 260 },
+  { percent: LEGACY_PET_SCALE_PERCENT.large, side: 320 }
+];
+const PET_PANEL_SIZE = { width: 440, height: 610 };
+const PET_PANEL_LAYOUT = {
+  padding: 14,
+  gap: 8,
+  panelWidth: 228
+};
 
 function getWindowStatePath() {
   return path.join(app.getPath('userData'), 'pet-window-state.json');
+}
+
+function clampPetScalePercent(scalePercent) {
+  const nextPercent = Number(scalePercent);
+  if (!Number.isFinite(nextPercent)) {
+    return 100;
+  }
+
+  return Math.min(PET_SCALE_MAX, Math.max(PET_SCALE_MIN, nextPercent));
+}
+
+function resolveSavedScalePercent(settings = {}) {
+  if (Number.isFinite(settings.scalePercent)) {
+    return clampPetScalePercent(settings.scalePercent);
+  }
+
+  return LEGACY_PET_SCALE_PERCENT[settings.scale] || 100;
+}
+
+function getPetWindowSize(scalePercent = petWindowSettings.scalePercent) {
+  const percent = clampPetScalePercent(scalePercent);
+  let lowerPoint = PET_WINDOW_SCALE_POINTS[0];
+  let upperPoint = PET_WINDOW_SCALE_POINTS[1];
+
+  if (percent >= PET_WINDOW_SCALE_POINTS[1].percent) {
+    lowerPoint = PET_WINDOW_SCALE_POINTS[1];
+    upperPoint = PET_WINDOW_SCALE_POINTS[2];
+  }
+
+  const progress = (percent - lowerPoint.percent) / (upperPoint.percent - lowerPoint.percent);
+  const side = Math.round(lowerPoint.side + (upperPoint.side - lowerPoint.side) * progress);
+  return { width: side, height: side };
 }
 
 function loadPetWindowBounds() {
@@ -37,10 +81,11 @@ function loadPetWindowBounds() {
     }
 
     if (savedState.settings && typeof savedState.settings === 'object') {
+      const { scale, ...savedSettings } = savedState.settings;
       petWindowSettings = {
         ...petWindowSettings,
-        ...savedState.settings,
-        scale: PET_WINDOW_SIZES[savedState.settings.scale] ? savedState.settings.scale : petWindowSettings.scale,
+        ...savedSettings,
+        scalePercent: resolveSavedScalePercent(savedState.settings),
         alwaysOnTop: savedState.settings.alwaysOnTop !== false
       };
     }
@@ -56,10 +101,12 @@ function savePetWindowBounds() {
 
   const bounds = petWindow.getBounds();
   if (petWindowPanelOpen) {
-    const size = PET_WINDOW_SIZES[petWindowSettings.scale] || PET_WINDOW_SIZES.medium;
+    const size = getPetWindowSize();
+    const panelAnchor = getPetAnchorOffset(bounds, true);
+    const normalAnchor = getPetAnchorOffset(size, false);
     petWindowBounds = {
-      x: bounds.x + Math.round((bounds.width - size.width) / 2),
-      y: bounds.y + Math.round((bounds.height - size.height) / 2),
+      x: bounds.x + panelAnchor.x - normalAnchor.x,
+      y: bounds.y + panelAnchor.y - normalAnchor.y,
       width: size.width,
       height: size.height
     };
@@ -107,25 +154,94 @@ function movePetWindow(bounds = {}) {
   return petWindow.getBounds();
 }
 
+function getPetAnchorOffset(size, isPanelOpen) {
+  const width = Math.round(size.width);
+  const height = Math.round(size.height);
+
+  if (!isPanelOpen) {
+    return {
+      x: Math.round(width / 2),
+      y: Math.round(height / 2)
+    };
+  }
+
+  const petColumnWidth = Math.max(
+    0,
+    width - PET_PANEL_LAYOUT.padding * 2 - PET_PANEL_LAYOUT.gap - PET_PANEL_LAYOUT.panelWidth
+  );
+
+  return {
+    x: PET_PANEL_LAYOUT.padding + Math.round(petColumnWidth / 2),
+    y: Math.round(height / 2)
+  };
+}
+
+function clampBoundsToDisplay(x, y, width, height, anchorX, anchorY) {
+  const display = screen.getDisplayNearestPoint({ x: anchorX, y: anchorY }).workArea;
+
+  return {
+    x: Math.min(Math.max(display.x, x), display.x + display.width - width),
+    y: Math.min(Math.max(display.y, y), display.y + display.height - height)
+  };
+}
+
+function clampScaleAtFixedTopLeft(scalePercent) {
+  if (!petWindow || petWindow.isDestroyed()) {
+    return clampPetScalePercent(scalePercent);
+  }
+
+  const bounds = petWindow.getBounds();
+  const display = screen.getDisplayNearestPoint({ x: bounds.x, y: bounds.y }).workArea;
+  const availableSide = Math.min(
+    display.x + display.width - bounds.x,
+    display.y + display.height - bounds.y
+  );
+  let low = PET_SCALE_MIN;
+  let high = clampPetScalePercent(scalePercent);
+
+  if (getPetWindowSize(high).width <= availableSide) {
+    return high;
+  }
+
+  for (let index = 0; index < 12; index += 1) {
+    const middle = (low + high) / 2;
+    if (getPetWindowSize(middle).width <= availableSide) {
+      low = middle;
+    } else {
+      high = middle;
+    }
+  }
+
+  return low;
+}
+
 function resizePetWindow(size, options = {}) {
   if (!petWindow || petWindow.isDestroyed()) {
     return null;
   }
 
   const currentBounds = petWindow.getBounds();
-  const anchorX = currentBounds.x + Math.round(currentBounds.width / 2);
-  const anchorY = currentBounds.y + Math.round(currentBounds.height / 2);
   const nextWidth = Math.round(size.width);
   const nextHeight = Math.round(size.height);
-  const display = screen.getDisplayNearestPoint({ x: anchorX, y: anchorY }).workArea;
-  const nextX = Math.min(
-    Math.max(display.x, anchorX - Math.round(nextWidth / 2)),
-    display.x + display.width - nextWidth
-  );
-  const nextY = Math.min(
-    Math.max(display.y, anchorY - Math.round(nextHeight / 2)),
-    display.y + display.height - nextHeight
-  );
+  const fromPanelOpen = options.fromPanelOpen ?? petWindowPanelOpen;
+  const toPanelOpen = options.toPanelOpen ?? petWindowPanelOpen;
+  let nextX = currentBounds.x;
+  let nextY = currentBounds.y;
+
+  if (options.preserveTopLeft !== true) {
+    const currentAnchor = getPetAnchorOffset(currentBounds, fromPanelOpen);
+    const nextAnchor = getPetAnchorOffset({ width: nextWidth, height: nextHeight }, toPanelOpen);
+    const anchorX = currentBounds.x + currentAnchor.x;
+    const anchorY = currentBounds.y + currentAnchor.y;
+    nextX = anchorX - nextAnchor.x;
+    nextY = anchorY - nextAnchor.y;
+
+    if (options.preservePetAnchor !== true) {
+      const clamped = clampBoundsToDisplay(nextX, nextY, nextWidth, nextHeight, anchorX, anchorY);
+      nextX = clamped.x;
+      nextY = clamped.y;
+    }
+  }
 
   petWindow.setBounds({
     x: nextX,
@@ -138,21 +254,42 @@ function resizePetWindow(size, options = {}) {
   return petWindow.getBounds();
 }
 
-function setPetWindowScale(scale = 'medium') {
-  const nextScale = PET_WINDOW_SIZES[scale] ? scale : 'medium';
-  petWindowSettings.scale = nextScale;
-  resizePetWindow(PET_WINDOW_SIZES[nextScale]);
+function setPetWindowScale(scalePercent = 100, options = {}) {
+  const requestedPercent = typeof scalePercent === 'string'
+    ? LEGACY_PET_SCALE_PERCENT[scalePercent] || 100
+    : scalePercent;
+  const nextPercent = options.preserveTopLeft === true && !petWindowPanelOpen
+    ? clampScaleAtFixedTopLeft(requestedPercent)
+    : clampPetScalePercent(requestedPercent);
+  petWindowSettings.scalePercent = Math.round(nextPercent * 100) / 100;
+
+  if (petWindowPanelOpen) {
+    savePetWindowBounds();
+  } else {
+    resizePetWindow(getPetWindowSize(), {
+      preserveTopLeft: options.preserveTopLeft === true
+    });
+  }
   return getPetWindowStatus();
 }
 
 function setPetWindowPanelMode(isOpen) {
+  const wasPanelOpen = petWindowPanelOpen;
   petWindowPanelOpen = Boolean(isOpen);
-  if (isOpen) {
-    resizePetWindow(PET_PANEL_SIZE);
+  if (petWindowPanelOpen) {
+    resizePetWindow(PET_PANEL_SIZE, {
+      preservePetAnchor: true,
+      fromPanelOpen: wasPanelOpen,
+      toPanelOpen: true
+    });
     return getPetWindowStatus();
   }
 
-  resizePetWindow(PET_WINDOW_SIZES[petWindowSettings.scale] || PET_WINDOW_SIZES.medium);
+  resizePetWindow(getPetWindowSize(), {
+    preservePetAnchor: true,
+    fromPanelOpen: wasPanelOpen,
+    toPanelOpen: false
+  });
   return getPetWindowStatus();
 }
 
@@ -198,7 +335,7 @@ function createPetWindow() {
     return petWindow;
   }
 
-  const initialSize = PET_WINDOW_SIZES[petWindowSettings.scale] || PET_WINDOW_SIZES.medium;
+  const initialSize = getPetWindowSize();
   petWindow = new BrowserWindow({
     width: initialSize.width,
     height: initialSize.height,
@@ -246,8 +383,34 @@ function createPetWindow() {
   return petWindow;
 }
 
-ipcMain.handle('pet-window:open', () => {
+function playPetWindowOpeningAnimation() {
+  if (!petWindow || petWindow.isDestroyed()) {
+    return;
+  }
+
+  const runAnimation = () => {
+    if (!petWindow || petWindow.isDestroyed()) {
+      return;
+    }
+
+    petWindow.webContents.executeJavaScript('window.playPetOpeningAnimation?.()', true).catch((error) => {
+      console.warn('Failed to play pet opening animation:', error);
+    });
+  };
+
+  if (petWindow.webContents.isLoading()) {
+    petWindow.webContents.once('did-finish-load', runAnimation);
+    return;
+  }
+
+  runAnimation();
+}
+
+ipcMain.handle('pet-window:open', (_event, options = {}) => {
   createPetWindow();
+  if (options.openingAnimation === true) {
+    playPetWindowOpeningAnimation();
+  }
   return getPetWindowStatus();
 });
 
@@ -266,7 +429,7 @@ ipcMain.handle('pet-window:move', (_event, bounds) => movePetWindow(bounds));
 
 ipcMain.handle('pet-window:set-panel-mode', (_event, isOpen) => setPetWindowPanelMode(isOpen));
 
-ipcMain.handle('pet-window:set-scale', (_event, scale) => setPetWindowScale(scale));
+ipcMain.handle('pet-window:set-scale', (_event, scalePercent, options = {}) => setPetWindowScale(scalePercent, options));
 
 ipcMain.handle('pet-window:set-always-on-top', (_event, enabled) => setPetWindowAlwaysOnTop(enabled));
 

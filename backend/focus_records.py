@@ -32,6 +32,7 @@ class FocusRecordBook:
                 "completed_at": completed_at,
                 "focus_seconds": timer_status.focus_seconds,
                 "completed_date": completed_dt.strftime("%Y-%m-%d"),
+                "task_id": timer_status.last_completed_focus_task_id,
             }
             self.data.setdefault("records", []).append(record)
             self.data["last_recorded_focus_id"] = focus_id
@@ -60,6 +61,7 @@ class FocusRecordBook:
             completed_at=float(record["completed_at"]),
             focus_seconds=int(record["focus_seconds"]),
             completed_date=str(record["completed_date"]),
+            task_id=record.get("task_id"),
         )
 
     def _save(self):

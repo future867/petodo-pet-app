@@ -7,6 +7,7 @@ DATA_DIR = Path(__file__).parent / "data"
 PET_DATA_FILE = DATA_DIR / "pet_data.json"
 FOCUS_DATA_FILE = DATA_DIR / "focus_records.json"
 SHOP_DATA_FILE = DATA_DIR / "shop_data.json"
+FISHING_DATA_FILE = DATA_DIR / "fishing_data.json"
 
 
 def ensure_data_dir():
@@ -119,6 +120,56 @@ def load_shop_data():
 
 def save_shop_data(data):
     save_json_file(SHOP_DATA_FILE, data)
+
+
+def default_fishing_data(rewarded_focus_keys=None):
+    return {
+        "bait": 0,
+        "completedPomodorosSinceLastFishingInvite": 0,
+        "fishingCount": 0,
+        "fishInventory": {
+            "driedFish": 0,
+            "fish": 0,
+        },
+        "rareFishCount": 0,
+        "bonusPoints": 0,
+        "rewardedFocusKeys": list(rewarded_focus_keys or []),
+        "lastInviteEvaluationKey": None,
+        "pendingInvitationFocusKey": None,
+        "activeFishing": None,
+        "lastSettlement": None,
+    }
+
+
+def load_fishing_data():
+    ensure_data_dir()
+    data = load_json_file(FISHING_DATA_FILE)
+    if data is None:
+        return None
+
+    defaults = default_fishing_data()
+    normalized = {**defaults, **data}
+    for key in ("bait", "completedPomodorosSinceLastFishingInvite", "fishingCount", "rareFishCount", "bonusPoints"):
+        try:
+            normalized[key] = max(0, int(normalized.get(key, 0)))
+        except (TypeError, ValueError):
+            normalized[key] = 0
+
+    inventory = data.get("fishInventory") if isinstance(data.get("fishInventory"), dict) else {}
+    normalized["fishInventory"] = {}
+    for key in ("driedFish", "fish"):
+        try:
+            normalized["fishInventory"][key] = max(0, int(inventory.get(key, 0)))
+        except (TypeError, ValueError):
+            normalized["fishInventory"][key] = 0
+
+    keys = data.get("rewardedFocusKeys")
+    normalized["rewardedFocusKeys"] = [str(key) for key in keys] if isinstance(keys, list) else []
+    return normalized
+
+
+def save_fishing_data(data):
+    save_json_file(FISHING_DATA_FILE, data)
 
 
 def load_json_file(file_path):

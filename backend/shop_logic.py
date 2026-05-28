@@ -9,17 +9,17 @@ from storage import default_shop_data, load_shop_data, save_shop_data
 POINTS_PER_FOCUS = 20
 
 SHOP_ITEMS = {
-    "fish": {
-        "name": FOODS["fish"]["name"],
+    "hamburger": {
+        "name": FOODS["hamburger"]["name"],
         "price": 20,
     },
-    "shrimp": {
-        "name": FOODS["shrimp"]["name"],
-        "price": 50,
+    "pizza": {
+        "name": FOODS["pizza"]["name"],
+        "price": 35,
     },
-    "seafood_platter": {
-        "name": FOODS["seafood_platter"]["name"],
-        "price": 100,
+    "chicken_leg": {
+        "name": FOODS["chicken_leg"]["name"],
+        "price": 60,
     },
 }
 
@@ -31,23 +31,27 @@ class ShopLedger:
         self.lock = Lock()
         self.data = load_shop_data() if storage_enabled else default_shop_data()
 
-    def points_status(self, focus_stats: FocusStats):
+    def points_status(self, focus_stats: FocusStats, fishing_bonus_points=0):
         spent_points = self._spent_points()
-        earned_points = focus_stats.total_completed_count * POINTS_PER_FOCUS
+        focus_points = focus_stats.total_completed_count * POINTS_PER_FOCUS
+        fishing_bonus_points = max(0, int(fishing_bonus_points))
+        earned_points = focus_points + fishing_bonus_points
         return PointsStatus(
             points_per_focus=POINTS_PER_FOCUS,
             earned_points=earned_points,
             spent_points=spent_points,
             current_points=max(0, earned_points - spent_points),
+            focus_points=focus_points,
+            fishing_bonus_points=fishing_bonus_points,
         )
 
-    def redeem_food(self, food_id: str, focus_stats: FocusStats, pet: PetStateMachine, timer_status: TimerStatus):
+    def redeem_food(self, food_id: str, focus_stats: FocusStats, pet: PetStateMachine, timer_status: TimerStatus, fishing_bonus_points=0):
         item = SHOP_ITEMS[food_id]
-        status = self.points_status(focus_stats)
+        status = self.points_status(focus_stats, fishing_bonus_points)
         price = int(item["price"])
 
         with self.lock:
-            status = self.points_status(focus_stats)
+            status = self.points_status(focus_stats, fishing_bonus_points)
             if status.current_points < price:
                 return ShopRedeemResult(
                     success=False,

@@ -15,12 +15,15 @@ PetState = Literal[
     "hungry_heavy",
     "angry",
     "eating",
+    "eating_hamburger",
+    "eating_pizza",
+    "eating_chicken_leg",
     "finished_eating",
-    "drag",
     "tap",
+    "fishing",
 ]
-PetInteraction = Literal["drag", "tap"]
-FoodId = Literal["fish", "shrimp", "seafood_platter"]
+PetInteraction = Literal["tap"]
+FoodId = Literal["hamburger", "pizza", "chicken_leg"]
 
 
 class TimerStatus(BaseModel):
@@ -34,7 +37,13 @@ class TimerStatus(BaseModel):
     last_completed_focus_id: int | None = None
     last_completed_focus_started_at: float | None = None
     last_completed_focus_completed_at: float | None = None
+    focus_task_id: str | None = None
+    last_completed_focus_task_id: str | None = None
     focus_completed: bool = False
+
+
+class TimerStartRequest(BaseModel):
+    task_id: str | None = None
 
 
 class PetAttributes(BaseModel):
@@ -80,6 +89,8 @@ class PointsStatus(BaseModel):
     earned_points: int
     spent_points: int
     current_points: int
+    focus_points: int = 0
+    fishing_bonus_points: int = 0
 
 
 class ShopRedeemResult(BaseModel):
@@ -98,6 +109,7 @@ class FocusRecord(BaseModel):
     completed_at: float
     focus_seconds: int
     completed_date: str
+    task_id: str | None = None
 
 
 class FocusStats(BaseModel):
@@ -105,6 +117,45 @@ class FocusStats(BaseModel):
     total_completed_count: int
     total_focus_seconds: int
     records: list[FocusRecord]
+
+
+class FishingSessionStatus(BaseModel):
+    sessionId: str
+    startedAt: float
+
+
+class FishingStatus(BaseModel):
+    bait: int
+    completedPomodorosSinceLastFishingInvite: int
+    fishingCount: int
+    fishInventory: dict[str, int]
+    rareFishCount: int
+    pendingInvitation: bool
+    activeFishing: FishingSessionStatus | None = None
+
+
+class FishingInviteResponse(BaseModel):
+    invited: bool
+    fishing: FishingStatus
+
+
+class FishingStartResponse(BaseModel):
+    success: bool
+    message: str
+    fishing: FishingStatus
+
+
+class FishingSettleRequest(BaseModel):
+    sessionId: str
+
+
+class FishingSettleResponse(BaseModel):
+    success: bool
+    newlySettled: bool
+    result: str | None = None
+    rewardLabel: str = ""
+    bubbleMessage: str = ""
+    fishing: FishingStatus
 
 
 class AppStatus(BaseModel):
@@ -117,3 +168,4 @@ class AppStatus(BaseModel):
     total_completed_count: int
     points: int
     points_status: PointsStatus
+    fishing: FishingStatus

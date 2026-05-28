@@ -24,7 +24,7 @@ class PetRenderer {
     }
 
     this.theme = await response.json();
-    const defaultState = this.theme.defaultState || 'idle';
+    const defaultState = this.theme.defaultState || 'idle_1';
     this.fallbackFrame = await this.resolveFallbackFrame(defaultState);
     await this.setPetState(defaultState);
   }
@@ -35,7 +35,7 @@ class PetRenderer {
       return;
     }
 
-    const nextState = this.theme.states[stateName] ? stateName : (this.theme.defaultState || 'idle');
+    const nextState = this.theme.states[stateName] ? stateName : (this.theme.defaultState || 'idle_1');
     if (!this.theme.states[stateName]) {
       console.warn(`Missing pet state "${stateName}", falling back to "${nextState}".`);
     }
@@ -154,6 +154,7 @@ class PetRenderer {
           type: 'frames',
           frames,
           fps: state.fps || 6,
+          playCount: state.playCount || 1,
           loop: state.loop !== false,
           bubble: state.bubble,
           movement: state.movement
@@ -205,7 +206,7 @@ class PetRenderer {
 
     const frames = [];
     const extensions = ['png', 'apng', 'gif', 'svg', 'webp'];
-    for (let index = 1; index <= 60; index += 1) {
+    for (let index = 1; index <= 90; index += 1) {
       const number = String(index).padStart(2, '0');
       let found = null;
 
@@ -229,7 +230,9 @@ class PetRenderer {
   }
 
   playFrames(asset, stateName) {
-    const frameDuration = Math.max(80, Math.round(1000 / asset.fps));
+    const frameDuration = Math.max(30, Math.round(1000 / asset.fps));
+    const playCount = Math.max(1, Math.round(asset.playCount || 1));
+    let completedPlays = 0;
     this.showImage(asset.frames[0]);
 
     if (asset.frames.length === 1) {
@@ -241,11 +244,14 @@ class PetRenderer {
 
       if (this.frameIndex >= asset.frames.length) {
         if (!asset.loop) {
-          this.frameIndex = asset.frames.length - 1;
-          this.showImage(asset.frames[this.frameIndex]);
-          this.clearTimers();
-          this.onStateComplete?.(stateName);
-          return;
+          completedPlays += 1;
+          if (completedPlays >= playCount) {
+            this.frameIndex = asset.frames.length - 1;
+            this.showImage(asset.frames[this.frameIndex]);
+            this.clearTimers();
+            this.onStateComplete?.(stateName);
+            return;
+          }
         }
 
         this.frameIndex = 0;
@@ -258,7 +264,7 @@ class PetRenderer {
       this.stateCompleteTimer = setTimeout(() => {
         this.clearTimers();
         this.onStateComplete?.(stateName);
-      }, frameDuration * asset.frames.length);
+      }, frameDuration * asset.frames.length * playCount);
     }
   }
 

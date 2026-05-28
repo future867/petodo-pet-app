@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Petodo GIF 素材整理</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1f2933;
+      --muted: #667085;
+      --line: #d8dee6;
+      --paper: #fbfcfe;
+      --panel: #ffffff;
+      --accent: #2f7d71;
+      --accent-soft: #e8f3ef;
+      --warm: #f8efe5;
+      --shadow: 0 18px 45px rgba(31, 41, 51, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      line-height: 1.65;
+    }
+
+    header {
+      padding: 56px min(7vw, 86px) 34px;
+      background:
+        linear-gradient(135deg, rgba(47, 125, 113, 0.14), rgba(248, 239, 229, 0.92)),
+        #f7faf9;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(30px, 4vw, 48px);
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 44px 0 16px;
+      font-size: 24px;
+    }
+
+    h3 {
+      margin: 24px 0 12px;
+      font-size: 18px;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 34px));
+      margin: 0 auto;
+      padding: 28px 0 64px;
+    }
+
+    .lead {
+      max-width: 850px;
+      font-size: 17px;
+      color: #344054;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 6px 12px;
+      border: 1px solid rgba(47, 125, 113, 0.3);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.68);
+      color: #255f58;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin: 28px 0 12px;
+    }
+
+    .stat {
+      padding: 20px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 30px;
+      line-height: 1.1;
+      color: var(--accent);
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .notice {
+      margin: 18px 0 28px;
+      padding: 16px 18px;
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      border-radius: 6px;
+      color: #2d4f4a;
+    }
+
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 18px 0 34px;
+    }
+
+    .toc a {
+      color: var(--accent);
+      text-decoration: none;
+      padding: 6px 10px;
+      border-bottom: 1px solid rgba(47, 125, 113, 0.35);
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      color: #344054;
+      background: #f2f5f7;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+      color: #315b55;
+      word-break: break-all;
+    }
+
+    .preview {
+      width: 92px;
+      height: 92px;
+      object-fit: contain;
+      image-rendering: auto;
+      background:
+        linear-gradient(45deg, #edf1f4 25%, transparent 25%),
+        linear-gradient(-45deg, #edf1f4 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #edf1f4 75%),
+        linear-gradient(-45deg, transparent 75%, #edf1f4 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+      border: 1px solid #d6dde5;
+      border-radius: 8px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      display: grid;
+      grid-template-rows: 132px auto;
+      min-height: 238px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .card figure {
+      display: grid;
+      place-items: center;
+      margin: 0;
+      background:
+        linear-gradient(45deg, #eef2f5 25%, transparent 25%),
+        linear-gradient(-45deg, #eef2f5 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #eef2f5 75%),
+        linear-gradient(-45deg, transparent 75%, #eef2f5 75%);
+      background-size: 22px 22px;
+      background-position: 0 0, 0 11px, 11px -11px, -11px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .card img {
+      max-width: 118px;
+      max-height: 118px;
+      object-fit: contain;
+    }
+
+    .card div {
+      padding: 12px 13px 14px;
+    }
+
+    .card strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 15px;
+    }
+
+    .card span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .section-note {
+      margin: 0 0 16px;
+      color: var(--muted);
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--warm);
+      color: #70512f;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .compact-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .compact-list li {
+      padding: 14px 16px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    footer {
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      padding-top: 24px;
+      margin-top: 48px;
+      font-size: 14px;
+    }
+
+    @media (max-width: 820px) {
+      header {
+        padding: 38px 20px 28px;
+      }
+
+      main {
+        width: calc(100% - 24px);
+      }
+
+      .summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .summary {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Petodo GIF 素材整理</h1>
+    <p class="lead">把 Petodo 当前唯一主题里真正接入的 GIF 集中列出来。这里优先记录程序会调用的素材，候选素材和非 GIF 动画另行说明。</p>
+    <div class="meta">
+      <span class="pill">更新日期：2026-05-26</span>
+      <span class="pill">范围：罗小黑桌宠主题素材</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="summary" aria-label="整理概览">
+      <div class="stat"><strong>1</strong><span>唯一主题：罗小黑</span></div>
+      <div class="stat"><strong>23</strong><span>已配置的动作状态</span></div>
+      <div class="stat"><strong>3</strong><span>逐帧动作组</span></div>
+      <div class="stat"><strong>1</strong><span>统一素材检查入口</span></div>
+    </section>
+
+    <p class="notice">判定标准：以 <code>frontend/assets/pet/*/theme.json</code> 里的 GIF 配置为主，再对照前端引用和文件是否存在。这样能区分“已经接入应用”和“只是放在项目里的候选文件”。</p>
+
+    <nav class="toc" aria-label="页面目录">
+      <a href="#luoxiaohei">罗小黑 GIF</a>
+      <a href="#gallery">预览总览</a>
+      <a href="#not-gif">非 GIF 动画</a>
+      <a href="#candidates">候选素材</a>
+    </nav>
+
+    <section id="luoxiaohei">
+      <h2>罗小黑 GIF 状态表</h2>
+      <p class="section-note">罗小黑是当前唯一主题。下面只列已经被主题配置实际调用的 GIF，不把旁边的检查图、预览图和未接入素材混进来。</p>
+      <table>
+        <thead>
+          <tr>
+            <th>预览</th>
+            <th>状态</th>
+            <th>触发场景</th>
+            <th>文件</th>
+            <th>规格</th>
+            <th>播放</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><img class="preview" src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-idle-1.gif" alt="罗小黑 idle 1"></td>
+            <td><code>idle_1</code></td>
+            <td>默认待机</td>
+            <td><code>frontend/assets/pet/luoxiaohei/gif/luoxiaohei-idle-1.gif</code></td>
+            <td>240x264，45 帧，418.6 KB</td>
+            <td><span class="tag">循环</span></td>
+          </tr>
+          <tr>
+            <td><img class="preview" src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-idle.gif" alt="罗小黑 idle 2"></td>
+            <td><code>idle_2</code> / <code>drag</code></td>
+            <td>长时间待机；拖动时临时复用</td>
+            <td><code>frontend/assets/pet/luoxiaohei/gif/luoxiaohei-idle.gif</code></td>
+            <td>200x200，8 帧，28.3 KB</td>
+            <td><span class="tag">循环 / 拖动 0.7 秒</span></td>
+          </tr>
+          <tr>
+            <td><img class="preview" src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-focus.gif" alt="罗小黑 focus"></td>
+            <td><code>focus</code></td>
+            <td>番茄钟专注中</td>
+            <td><code>frontend/assets/pet/luoxiaohei/gif/luoxiaohei-focus.gif</code></td>
+            <td>240x240，5 帧，26.8 KB</td>
+            <td><span class="tag">循环</span></td>
+          </tr>
+          <tr>
+            <td><img class="preview" src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-rest.gif" alt="罗小黑 rest"></td>
+            <td><code>rest</code></td>
+            <td>专注结束后的休息阶段</td>
+            <td><code>frontend/assets/pet/luoxiaohei/gif/luoxiaohei-rest.gif</code></td>
+            <td>313x247，123 帧，571.1 KB</td>
+            <td><span class="tag">循环</span></td>
+          </tr>
+          <tr>
+            <td><img class="preview" src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-sleep.gif" alt="罗小黑 sleep"></td>
+            <td><code>sleep</code></td>
+            <td>长时间未操作</td>
+            <td><code>frontend/assets/pet/luoxiaohei/gif/luoxiaohei-sleep.gif</code></td>
+            <td>200x200，37 帧，269.9 KB</td>
+            <td><span class="tag">循环</span></td>
+          </tr>
+          <tr>
+            <td><img class="preview" src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-hungry-heavy.gif" alt="罗小黑 hungry heavy"></td>
+            <td><code>hungry_heavy</code></td>
+            <td>重度饥饿</td>
+            <td><code>frontend/assets/pet/luoxiaohei/gif/luoxiaohei-hungry-heavy.gif</code></td>
+            <td>240x240，44 帧，587.4 KB</td>
+            <td><span class="tag">循环</span></td>
+          </tr>
+          <tr>
+            <td><img class="preview" src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-angry.gif" alt="罗小黑 angry"></td>
+            <td><code>angry</code></td>
+            <td>生气</td>
+            <td><code>frontend/assets/pet/luoxiaohei/gif/luoxiaohei-angry.gif</code></td>
+            <td>498x498，33 帧，589.0 KB</td>
+            <td><span class="tag">循环</span></td>
+          </tr>
+          <tr>
+            <td><img class="preview" src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-eating.gif" alt="罗小黑 eating"></td>
+            <td><code>eating</code></td>
+            <td>通用吃饭兜底</td>
+            <td><code>frontend/assets/pet/luoxiaohei/gif/luoxiaohei-eating.gif</code></td>
+            <td>240x240，22 帧，101.6 KB</td>
+            <td><span class="tag">循环</span></td>
+          </tr>
+          <tr>
+            <td><img class="preview" src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-eating-pizza.gif" alt="罗小黑 eating pizza"></td>
+            <td><code>eating_pizza</code></td>
+            <td>披萨专用进食动画</td>
+            <td><code>frontend/assets/pet/luoxiaohei/gif/luoxiaohei-eating-pizza.gif</code></td>
+            <td>240x240，28 帧，94.4 KB</td>
+            <td><span class="tag">循环</span></td>
+          </tr>
+          <tr>
+            <td><img class="preview" src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-finished-eating.gif" alt="罗小黑 finished eating"></td>
+            <td><code>finished_eating</code></td>
+            <td>吃完后的开心反馈</td>
+            <td><code>frontend/assets/pet/luoxiaohei/gif/luoxiaohei-finished-eating.gif</code></td>
+            <td>240x240，24 帧，120.0 KB</td>
+            <td><span class="tag">播放 3 秒</span></td>
+          </tr>
+          <tr>
+            <td><img class="preview" src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-greet.gif" alt="罗小黑 greet"></td>
+            <td><code>greet</code></td>
+            <td>打招呼</td>
+            <td><code>frontend/assets/pet/luoxiaohei/gif/luoxiaohei-greet.gif</code></td>
+            <td>231x264，45 帧，339.1 KB</td>
+            <td><span class="tag">播放 1.35 秒</span></td>
+          </tr>
+          <tr>
+            <td><img class="preview" src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-roll.gif" alt="罗小黑 roll"></td>
+            <td><code>roll</code></td>
+            <td>功能面板选择“打滚”</td>
+            <td><code>frontend/assets/pet/luoxiaohei/gif/luoxiaohei-roll.gif</code></td>
+            <td>264x248，54 帧，273.6 KB</td>
+            <td><span class="tag">播放 1.8 秒</span></td>
+          </tr>
+          <tr>
+            <td><img class="preview" src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-guitar.gif" alt="罗小黑 guitar"></td>
+            <td><code>guitar</code></td>
+            <td>功能面板选择“弹吉他”</td>
+            <td><code>frontend/assets/pet/luoxiaohei/gif/luoxiaohei-guitar.gif</code></td>
+            <td>302x264，62 帧，740.3 KB</td>
+            <td><span class="tag">播放 1.9 秒</span></td>
+          </tr>
+          <tr>
+            <td><img class="preview" src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-scratch.gif" alt="罗小黑 scratch"></td>
+            <td><code>scratch</code></td>
+            <td>功能面板选择“磨爪子”</td>
+            <td><code>frontend/assets/pet/luoxiaohei/gif/luoxiaohei-scratch.gif</code></td>
+            <td>289x188，39 帧，234.1 KB</td>
+            <td><span class="tag">播放 1.5 秒</span></td>
+          </tr>
+          <tr>
+            <td><img class="preview" src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-stretch.gif" alt="罗小黑 stretch"></td>
+            <td><code>stretch</code></td>
+            <td>功能面板选择“伸懒腰”</td>
+            <td><code>frontend/assets/pet/luoxiaohei/gif/luoxiaohei-stretch.gif</code></td>
+            <td>900x900，60 帧，1274.5 KB</td>
+            <td><span class="tag">播放 5 秒</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="gallery">
+      <h2>预览总览</h2>
+      <p class="section-note">这一块更接近参考仓库 README 的展示方式，方便一眼检查每个状态对应的角色表现。</p>
+
+      <h3>罗小黑</h3>
+      <div class="grid">
+        <article class="card"><figure><img src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-idle-1.gif" alt="罗小黑 idle 1"></figure><div><strong>idle_1</strong><span>默认待机</span></div></article>
+        <article class="card"><figure><img src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-idle.gif" alt="罗小黑 idle 2"></figure><div><strong>idle_2 / drag</strong><span>长时间待机 / 拖动</span></div></article>
+        <article class="card"><figure><img src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-focus.gif" alt="罗小黑 focus"></figure><div><strong>focus</strong><span>专注中</span></div></article>
+        <article class="card"><figure><img src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-rest.gif" alt="罗小黑 rest"></figure><div><strong>rest</strong><span>休息</span></div></article>
+        <article class="card"><figure><img src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-sleep.gif" alt="罗小黑 sleep"></figure><div><strong>sleep</strong><span>睡觉</span></div></article>
+        <article class="card"><figure><img src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-hungry-heavy.gif" alt="罗小黑 hungry heavy"></figure><div><strong>hungry_heavy</strong><span>重度饥饿</span></div></article>
+        <article class="card"><figure><img src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-angry.gif" alt="罗小黑 angry"></figure><div><strong>angry</strong><span>生气</span></div></article>
+        <article class="card"><figure><img src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-eating.gif" alt="罗小黑 eating"></figure><div><strong>eating</strong><span>普通喂食</span></div></article>
+        <article class="card"><figure><img src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-finished-eating.gif" alt="罗小黑 finished eating"></figure><div><strong>finished_eating</strong><span>吃饱反馈</span></div></article>
+        <article class="card"><figure><img src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-greet.gif" alt="罗小黑 greet"></figure><div><strong>greet</strong><span>打招呼</span></div></article>
+        <article class="card"><figure><img src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-roll.gif" alt="罗小黑 roll"></figure><div><strong>roll</strong><span>打滚</span></div></article>
+        <article class="card"><figure><img src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-guitar.gif" alt="罗小黑 guitar"></figure><div><strong>guitar</strong><span>弹吉他</span></div></article>
+        <article class="card"><figure><img src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-scratch.gif" alt="罗小黑 scratch"></figure><div><strong>scratch</strong><span>磨爪子</span></div></article>
+        <article class="card"><figure><img src="../frontend/assets/pet/luoxiaohei/gif/luoxiaohei-stretch.gif" alt="罗小黑 stretch"></figure><div><strong>stretch</strong><span>伸懒腰</span></div></article>
+      </div>
+    </section>
+
+    <section id="not-gif">
+      <h2>同一主题里正在用的非 GIF 动画</h2>
+      <p class="section-note">这些不是 GIF，但也是当前桌宠动画的一部分。为了避免遗漏项目素材，这里单独列出。</p>
+      <ul class="compact-list">
+        <li><strong>罗小黑 happy</strong><br><code>frontend/assets/pet/luoxiaohei/happy/</code><br>逐帧图片，用于完成专注后的开心反馈。</li>
+        <li><strong>罗小黑 run</strong><br><code>frontend/assets/pet/luoxiaohei/run/</code><br>逐帧图片，用于功能面板里的跑步动作。</li>
+        <li><strong>罗小黑 surf</strong><br><code>frontend/assets/pet/luoxiaohei/surf/</code><br>逐帧图片，用于功能面板里的冲浪动作。</li>
+        <li><strong>罗小黑 hungry / tap / exercise</strong><br><code>frontend/assets/pet/luoxiaohei/gif/*.webp</code><br>虽然目录名叫 gif，但这几项实际是 WebP。</li>
+        <li><strong>罗小黑特殊进食</strong><br><code>frontend/assets/pet/luoxiaohei/gif/*.png</code> 和 <code>frontend/assets/pet/luoxiaohei/gif/luoxiaohei-eating-pizza.gif</code><br>汉堡、鸡腿继续使用 PNG，披萨改为透明 GIF。</li>
+      </ul>
+    </section>
+
+    <section id="candidates">
+      <h2>候选素材位置</h2>
+      <p class="section-note">项目里还有不少 GIF 候选文件，它们目前没有全部接入主题配置。后续换动作时可以从这些位置挑选，再同步到主题状态表。</p>
+      <ul class="compact-list">
+        <li><strong>在线候选</strong><br><code>online_candidates/</code><br>包含下载或拆分后的罗小黑 GIF、WebP、MP4 片段。</li>
+        <li><strong>根目录处理稿</strong><br><code>luoxiaohei_*、licking the claw.gif、罗小黑表情包_2_爱给网_aigei_com.gif</code><br>多为早期处理稿或测试输出。</li>
+        <li><strong>应用内未接入 GIF</strong><br><code>frontend/assets/pet/luoxiaohei/gif/luoxiaohei-drag.gif</code> 等<br>文件存在，但当前主题配置不一定调用。</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>本页仅整理 Petodo 本地项目当前仍在使用的罗小黑素材。</p>
+    </footer>
+  </main>
+</body>
+</html>

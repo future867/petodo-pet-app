@@ -1,9 +1,14 @@
 {
   "name": "luoxiaohei",
   "displayName": "Luo Xiaohei",
-  "defaultState": "idle",
+  "defaultState": "idle_1",
   "states": {
-    "idle": {
+    "idle_1": {
+      "type": "image",
+      "path": "gif/luoxiaohei-idle-1.gif",
+      "loop": true
+    },
+    "idle_2": {
       "type": "image",
       "path": "gif/luoxiaohei-idle.gif",
       "loop": true
@@ -12,46 +17,49 @@
       "type": "image",
       "path": "gif/luoxiaohei-focus.gif",
       "loop": true,
-      "fallbackTo": "idle"
+      "fallbackTo": "idle_1"
     },
     "rest": {
       "type": "image",
       "path": "gif/luoxiaohei-rest.gif",
       "loop": true,
-      "fallbackTo": "idle"
+      "fallbackTo": "idle_1"
+    },
+    "fishing": {
+      "type": "image",
+      "path": "gif/luoxiaohei-fishing.gif",
+      "loop": true,
+      "fallbackTo": "rest"
     },
     "happy": {
-      "type": "image",
-      "path": "gif/luoxiaohei-happy.gif",
+      "type": "frames",
+      "path": "happy",
+      "fps": 33,
       "loop": false,
-      "duration": 3000,
-      "fallbackTo": "idle"
+      "fallbackTo": "idle_1"
     },
     "sleep": {
       "type": "image",
       "path": "gif/luoxiaohei-sleep.gif",
       "loop": true,
-      "fallbackTo": "idle"
+      "fallbackTo": "idle_1"
     },
     "hungry": {
       "type": "image",
       "path": "gif/luoxiaohei-hungry.webp",
       "loop": true,
-      "bubble": "food?",
-      "fallbackTo": "idle"
+      "fallbackTo": "idle_1"
     },
     "hungry_heavy": {
       "type": "image",
-      "path": "gif/luoxiaohei-hungry-heavy.gif",
+      "path": "gif/luoxiaohei-hungry-heavy.webp",
       "loop": true,
-      "bubble": "hungry",
       "fallbackTo": "hungry"
     },
     "angry": {
       "type": "image",
       "path": "gif/luoxiaohei-angry.gif",
       "loop": true,
-      "bubble": "hungry",
       "fallbackTo": "hungry"
     },
     "eating": {
@@ -59,53 +67,239 @@
       "path": "gif/luoxiaohei-eating.gif",
       "loop": true,
       "bubble": "eating...",
-      "fallbackTo": "idle"
+      "fallbackTo": "idle_1"
+    },
+    "eating_hamburger": {
+      "type": "image",
+      "path": "gif/luoxiaohei-eating-hamburger.png",
+      "loop": true,
+      "fallbackTo": "idle_1"
+    },
+    "eating_pizza": {
+      "type": "image",
+      "path": "gif/luoxiaohei-eating-pizza.gif",
+      "loop": true,
+      "fallbackTo": "idle_1"
+    },
+    "eating_chicken_leg": {
+      "type": "image",
+      "path": "gif/luoxiaohei-eating-chicken-leg.png",
+      "loop": true,
+      "fallbackTo": "idle_1"
     },
     "finished_eating": {
       "type": "image",
       "path": "gif/luoxiaohei-finished-eating.gif",
       "loop": false,
       "duration": 3000,
-      "fallbackTo": "idle"
-    },
-    "drag": {
-      "type": "image",
-      "path": "gif/luoxiaohei-idle.gif",
-      "loop": false,
-      "duration": 700,
-      "fallbackTo": "idle"
+      "fallbackTo": "idle_1"
     },
     "tap": {
       "type": "image",
       "path": "gif/luoxiaohei-tap.webp",
       "loop": false,
       "duration": 650,
-      "fallbackTo": "idle"
+      "fallbackTo": "idle_1"
+    },
+    "greet": {
+      "type": "image",
+      "path": "gif/luoxiaohei-greet.gif",
+      "loop": false,
+      "duration": 1350,
+      "fallbackTo": "idle_1"
+    },
+    "run": {
+      "type": "frames",
+      "path": "run",
+      "fps": 12.5,
+      "loop": true,
+      "fallbackTo": "idle_1"
     },
     "roll": {
       "type": "image",
       "path": "gif/luoxiaohei-roll.gif",
       "loop": false,
       "duration": 1800,
-      "fallbackTo": "idle"
+      "fallbackTo": "idle_1"
+    },
+    "surf": {
+      "type": "frames",
+      "path": "surf",
+      "fps": 33,
+      "playCount": 2,
+      "loop": false,
+      "fallbackTo": "idle_1"
+    },
+    "exercise": {
+      "type": "image",
+      "path": "gif/luoxiaohei-exercise.webp",
+      "loop": false,
+      "duration": 1100,
+      "fallbackTo": "idle_1"
     },
     "guitar": {
       "type": "image",
       "path": "gif/luoxiaohei-guitar.gif",
       "loop": false,
       "duration": 1900,
-      "fallbackTo": "idle"
+      "fallbackTo": "idle_1"
     },
     "scratch": {
       "type": "image",
       "path": "gif/luoxiaohei-scratch.gif",
       "loop": false,
       "duration": 1500,
-      "fallbackTo": "idle"
+      "fallbackTo": "idle_1"
+    },
+    "stretch": {
+      "type": "image",
+      "path": "gif/luoxiaohei-stretch.gif",
+      "loop": false,
+      "duration": 5000,
+      "fallbackTo": "idle_1"
     }
+  },
+  "frameManifests": {
+    "happy": [
+      "happy_01.png",
+      "happy_02.png",
+      "happy_03.png",
+      "happy_04.png",
+      "happy_05.png",
+      "happy_06.png",
+      "happy_07.png",
+      "happy_08.png",
+      "happy_09.png",
+      "happy_10.png",
+      "happy_11.png",
+      "happy_12.png",
+      "happy_13.png",
+      "happy_14.png",
+      "happy_15.png",
+      "happy_16.png",
+      "happy_17.png",
+      "happy_18.png",
+      "happy_19.png",
+      "happy_20.png",
+      "happy_21.png",
+      "happy_22.png",
+      "happy_23.png",
+      "happy_24.png",
+      "happy_25.png",
+      "happy_26.png",
+      "happy_27.png",
+      "happy_28.png",
+      "happy_29.png",
+      "happy_30.png",
+      "happy_31.png",
+      "happy_32.png",
+      "happy_33.png",
+      "happy_34.png",
+      "happy_35.png",
+      "happy_36.png",
+      "happy_37.png",
+      "happy_38.png",
+      "happy_39.png",
+      "happy_40.png",
+      "happy_41.png",
+      "happy_42.png",
+      "happy_43.png",
+      "happy_44.png",
+      "happy_45.png",
+      "happy_46.png",
+      "happy_47.png",
+      "happy_48.png",
+      "happy_49.png",
+      "happy_50.png",
+      "happy_51.png",
+      "happy_52.png"
+    ],
+    "run": [
+      "run_01.png",
+      "run_02.png",
+      "run_03.png",
+      "run_04.png",
+      "run_05.png",
+      "run_06.png",
+      "run_07.png",
+      "run_08.png",
+      "run_09.png",
+      "run_10.png",
+      "run_11.png",
+      "run_12.png"
+    ],
+    "surf": [
+      "surf_01.png",
+      "surf_02.png",
+      "surf_03.png",
+      "surf_04.png",
+      "surf_05.png",
+      "surf_06.png",
+      "surf_07.png",
+      "surf_08.png",
+      "surf_09.png",
+      "surf_10.png",
+      "surf_11.png",
+      "surf_12.png",
+      "surf_13.png",
+      "surf_14.png",
+      "surf_15.png",
+      "surf_16.png",
+      "surf_17.png",
+      "surf_18.png",
+      "surf_19.png",
+      "surf_20.png",
+      "surf_21.png",
+      "surf_22.png",
+      "surf_23.png",
+      "surf_24.png",
+      "surf_25.png",
+      "surf_26.png",
+      "surf_27.png",
+      "surf_28.png",
+      "surf_29.png",
+      "surf_30.png",
+      "surf_31.png",
+      "surf_32.png",
+      "surf_33.png",
+      "surf_34.png",
+      "surf_35.png",
+      "surf_36.png",
+      "surf_37.png",
+      "surf_38.png",
+      "surf_39.png",
+      "surf_40.png",
+      "surf_41.png",
+      "surf_42.png",
+      "surf_43.png",
+      "surf_44.png",
+      "surf_45.png",
+      "surf_46.png",
+      "surf_47.png",
+      "surf_48.png",
+      "surf_49.png",
+      "surf_50.png",
+      "surf_51.png",
+      "surf_52.png",
+      "surf_53.png",
+      "surf_54.png",
+      "surf_55.png",
+      "surf_56.png",
+      "surf_57.png",
+      "surf_58.png",
+      "surf_59.png",
+      "surf_60.png",
+      "surf_61.png",
+      "surf_62.png",
+      "surf_63.png",
+      "surf_64.png",
+      "surf_65.png",
+      "surf_66.png",
+      "surf_67.png"
+    ]
   },
   "attribution": {
     "source": "User-selected local Luo Xiaohei GIF candidates",
-    "note": "Local coursework demo assets; drag currently reuses idle until a dedicated asset is selected."
+    "note": "Local coursework demo assets; idle_1 is the default idle state and idle_2 is used after a longer idle wait."
   }
 }

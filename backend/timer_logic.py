@@ -17,12 +17,14 @@ class PomodoroTimer:
         self.focus_cycle_id = 0
         self.active_focus_id = None
         self.focus_started_at = None
+        self.focus_task_id = None
         self.last_completed_focus_id = None
         self.last_completed_focus_started_at = None
         self.last_completed_focus_completed_at = None
+        self.last_completed_focus_task_id = None
         self.lock = Lock()
 
-    def start(self):
+    def start(self, task_id=None):
         with self.lock:
             now = self._now()
             self._update_status()
@@ -34,6 +36,7 @@ class PomodoroTimer:
                 self.focus_cycle_id += 1
                 self.active_focus_id = self.focus_cycle_id
                 self.focus_started_at = now
+                self.focus_task_id = task_id
                 self.mode = "focus"
                 self.previous_mode = None
                 self.remaining_seconds = self.focus_seconds
@@ -62,6 +65,7 @@ class PomodoroTimer:
             self.end_time = None
             self.active_focus_id = None
             self.focus_started_at = None
+            self.focus_task_id = None
             return self._build_status()
 
     def status(self):
@@ -109,8 +113,10 @@ class PomodoroTimer:
         self.last_completed_focus_id = self.active_focus_id
         self.last_completed_focus_started_at = self.focus_started_at
         self.last_completed_focus_completed_at = completed_at
+        self.last_completed_focus_task_id = self.focus_task_id
         self.active_focus_id = None
         self.focus_started_at = None
+        self.focus_task_id = None
 
     def _build_status(self):
         if self.mode in ["focus", "break"]:
@@ -127,6 +133,8 @@ class PomodoroTimer:
             last_completed_focus_id=self.last_completed_focus_id,
             last_completed_focus_started_at=self.last_completed_focus_started_at,
             last_completed_focus_completed_at=self.last_completed_focus_completed_at,
+            focus_task_id=self.focus_task_id,
+            last_completed_focus_task_id=self.last_completed_focus_task_id,
             focus_completed=self.last_completed_focus_id is not None,
         )
 

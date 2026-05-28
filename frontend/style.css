@@ -294,6 +294,16 @@ h2 {
   margin-top: 20px;
 }
 
+.feed-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.feed-actions .btn {
+  flex: 1 1 0;
+  padding: 0 10px;
+}
+
 .btn {
   min-height: 42px;
   padding: 0 18px;
@@ -616,6 +626,56 @@ h2 {
   font-weight: 700;
 }
 
+.companion-card[data-hunger-tone="watch"] #hungerText {
+  color: #ad6500;
+}
+
+.companion-card[data-hunger-tone="warning"] #hungerText,
+.companion-card[data-hunger-tone="danger"] #hungerText {
+  color: #b63d31;
+}
+
+.hunger-guidance {
+  display: grid;
+  gap: 4px;
+  margin-top: 16px;
+  padding: 11px 12px;
+  border: 1px solid #d3e6db;
+  border-radius: 8px;
+  background: #f3f8f4;
+}
+
+.hunger-guidance strong {
+  color: #315d43;
+  font-size: 14px;
+}
+
+.hunger-guidance span {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.hunger-guidance[data-tone="watch"] {
+  border-color: #edcf96;
+  background: #fff8eb;
+}
+
+.hunger-guidance[data-tone="watch"] strong {
+  color: #945500;
+}
+
+.hunger-guidance[data-tone="warning"],
+.hunger-guidance[data-tone="danger"] {
+  border-color: #edc2b8;
+  background: #fff2ef;
+}
+
+.hunger-guidance[data-tone="warning"] strong,
+.hunger-guidance[data-tone="danger"] strong {
+  color: #9f342a;
+}
+
 .accent-number,
 .price {
   color: var(--accent);
@@ -908,6 +968,37 @@ h2 {
 
 .completion-card .btn {
   margin-top: 24px;
+}
+
+.task-easter-egg-card {
+  padding-top: 26px;
+}
+
+.task-easter-egg-image {
+  display: block;
+  width: min(320px, 100%);
+  aspect-ratio: 16 / 9;
+  margin: 0 auto 18px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--surface-soft);
+}
+
+.todo-rollover-card {
+  min-height: 0;
+  padding-top: 38px;
+}
+
+.todo-rollover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.todo-rollover-actions .btn {
+  min-width: 132px;
 }
 
 .completion-label {

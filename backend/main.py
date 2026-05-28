@@ -1,15 +1,22 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from fishing_logic import FishingLedger
 from focus_records import FocusRecordBook
 from models import (
     AppStatus,
     FeedRequest,
     FeedResult,
+    FishingInviteResponse,
+    FishingSettleRequest,
+    FishingSettleResponse,
+    FishingStartResponse,
+    FishingStatus,
     PetInteractionRequest,
     PetStatus,
     ShopRedeemRequest,
     ShopRedeemResult,
+    TimerStartRequest,
     TimerStatus,
 )
 from pet_logic import PetStateMachine
@@ -22,6 +29,7 @@ timer = PomodoroTimer()
 pet = PetStateMachine()
 focus_records = FocusRecordBook()
 shop = ShopLedger()
+fishing = FishingLedger(existing_focus_records=focus_records.stats().records)
 
 app.add_middleware(
     CORSMiddleware,
@@ -47,8 +55,9 @@ def health_check():
 
 
 @app.post("/timer/start", response_model=TimerStatus)
-def start_timer():
-    return sync_focus_records(timer.start())
+def start_timer(request: TimerStartRequest | None = None):
+    task_id = request.task_id if request else None
+    return sync_focus_records(timer.start(task_id=task_id))
 
 
 @app.post("/timer/pause", response_model=TimerStatus)
@@ -88,7 +97,30 @@ def feed_pet(request: FeedRequest):
 def redeem_shop_item(request: ShopRedeemRequest):
     timer_status = sync_focus_records(timer.status())
     stats = focus_records.stats()
-    return shop.redeem_food(request.food_id, stats, pet, timer_status)
+    return shop.redeem_food(request.food_id, stats, pet, timer_status, fishing.points_bonus())
+
+
+@app.post("/fishing/invite/check", response_model=FishingInviteResponse)
+def check_fishing_invite():
+    timer_status = sync_focus_records(timer.status())
+    return fishing.check_invite(timer_status)
+
+
+@app.post("/fishing/invite/decline", response_model=FishingStatus)
+def decline_fishing_invite():
+    timer_status = sync_focus_records(timer.status())
+    return fishing.decline_invite(timer_status)
+
+
+@app.post("/fishing/start", response_model=FishingStartResponse)
+def start_fishing():
+    timer_status = sync_focus_records(timer.status())
+    return fishing.start(timer_status)
+
+
+@app.post("/fishing/settle", response_model=FishingSettleResponse)
+def settle_fishing(request: FishingSettleRequest):
+    return fishing.settle(request.sessionId)
 
 
 @app.post("/pet/decay", response_model=PetStatus)
@@ -102,7 +134,7 @@ def get_app_status():
     timer_status = sync_focus_records(timer.status())
     pet_status = pet.get_pet_state(timer_status)
     stats = focus_records.stats()
-    points_status = shop.points_status(stats)
+    points_status = shop.points_status(stats, fishing.points_bonus())
     return AppStatus(
         timer=timer_status,
         pet=pet_status,
@@ -113,9 +145,11 @@ def get_app_status():
         total_completed_count=stats.total_completed_count,
         points=points_status.current_points,
         points_status=points_status,
+        fishing=fishing.status(),
     )
 
 
 def sync_focus_records(timer_status):
-    focus_records.sync_timer_status(timer_status)
+    stats = focus_records.sync_timer_status(timer_status)
+    fishing.sync_focus_records(stats.records)
     return timer_status

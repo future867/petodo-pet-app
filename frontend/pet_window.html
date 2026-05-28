@@ -12,6 +12,18 @@
       <span id="timer-text">25:00</span>
     </div>
 
+    <section id="fishing-invite-bubble" class="fishing-invite-bubble" aria-label="钓鱼邀请" hidden>
+      <p>休息时间到，要不要钓鱼喵？</p>
+      <div class="fishing-invite-actions">
+        <button id="fishing-start-button" type="button">开始钓鱼</button>
+        <button id="fishing-decline-button" type="button">继续休息</button>
+      </div>
+    </section>
+
+    <div id="fishing-reward-popup" class="fishing-reward-popup" role="status" aria-live="polite" hidden>
+      <span id="fishing-reward-text"></span>
+    </div>
+
     <img
       id="pet-sprite"
       src="assets/pet/luoxiaohei/gif/luoxiaohei-idle.gif"
@@ -19,18 +31,45 @@
       draggable="false"
     >
 
+    <button id="pet-resize-handle" class="pet-resize-handle" type="button" aria-label="拖动调整小黑大小">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4.5 10.5v-6h6M4.5 4.5l6.8 6.8M19.5 13.5v6h-6M19.5 19.5l-6.8-6.8"></path>
+      </svg>
+    </button>
+
+    <div id="task-complete-easter-egg" aria-hidden="true" hidden>
+      <img
+        id="task-complete-animation"
+        src=""
+        alt=""
+        draggable="false"
+      >
+    </div>
+
     <section id="pet-tool-panel" class="pet-tool-panel" aria-label="小黑功能面板" hidden>
       <div class="panel-header">
         <span class="panel-title">小黑背包</span>
-        <span id="panel-status" class="panel-status">准备好了</span>
+        <span id="panel-status" class="panel-status">正在连接</span>
       </div>
+
+      <dl class="fishing-inventory" aria-label="钓鱼收藏">
+        <div><dt>🪱 鱼饵</dt><dd id="bait-count">0</dd></div>
+        <div><dt>🍖 小鱼干</dt><dd id="dried-fish-count">0</dd></div>
+        <div><dt>🐟 普通鱼</dt><dd id="fish-count">0</dd></div>
+        <div><dt>🐠 金色鱼</dt><dd id="rare-fish-count">0</dd></div>
+      </dl>
 
       <div class="tool-group" aria-label="日常互动">
         <button class="tool-button" type="button" data-action="sleep"><span>💤</span><b>睡觉</b></button>
-        <button class="tool-button" type="button" data-action="feed"><span>🐟</span><b>吃饭</b></button>
+        <button class="tool-button" type="button" data-action="feed"><span>🍔</span><b>吃饭</b></button>
         <button class="tool-button" type="button" data-action="roll"><span>🌀</span><b>打滚</b></button>
         <button class="tool-button" type="button" data-action="guitar"><span>🎸</span><b>弹吉他</b></button>
         <button class="tool-button" type="button" data-action="scratch"><span>〽</span><b>磨爪子</b></button>
+        <button class="tool-button" type="button" data-action="stretch"><span>↕</span><b>伸懒腰</b></button>
+        <button class="tool-button" type="button" data-action="greet"><span>👋</span><b>打招呼</b></button>
+        <button class="tool-button" type="button" data-action="run"><span>🏃</span><b>跑步</b></button>
+        <button class="tool-button" type="button" data-action="surf"><span>🏄</span><b>冲浪</b></button>
+        <button class="tool-button" type="button" data-action="exercise"><span>💪</span><b>锻炼</b></button>
         <button class="tool-button" type="button" data-action="tap"><span>👆</span><b>拍一拍</b></button>
       </div>
 

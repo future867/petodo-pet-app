@@ -7,20 +7,20 @@ from storage import clamp_attribute, default_pet_data, load_pet_data, save_pet_d
 
 
 FOODS = {
-    "fish": {
-        "name": "小鱼干",
+    "hamburger": {
+        "name": "汉堡",
         "hunger": 10,
         "mood": 0,
     },
-    "shrimp": {
-        "name": "虾仁",
+    "pizza": {
+        "name": "披萨",
         "hunger": 25,
         "mood": 0,
     },
-    "seafood_platter": {
-        "name": "海鲜拼盘",
+    "chicken_leg": {
+        "name": "鸡腿",
         "hunger": 40,
-        "mood": 10,
+        "mood": 0,
     },
 }
 
@@ -67,7 +67,7 @@ class PetStateMachine:
             now = self._now()
             self._decay_hunger(now)
 
-            if interaction in ["drag", "tap"]:
+            if interaction == "tap":
                 self.temporary_state = {
                     "state": interaction,
                     "until": now + self.interaction_seconds,
@@ -92,7 +92,7 @@ class PetStateMachine:
             self.data["last_active_at"] = now
             self._update_hungry_since(now)
             self.temporary_state = {
-                "state": "eating",
+                "state": f"eating_{food_id}",
                 "until": now + self.eating_seconds,
                 "next_state": "finished_eating",
                 "next_until": now + self.eating_seconds + self.finished_eating_seconds,

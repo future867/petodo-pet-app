@@ -3,8 +3,13 @@ const API_BASE_URL = 'http://127.0.0.1:8000';
 const EMPTY_TASK_LABEL = '暂未选择任务';
 const TODO_STORAGE_KEY = 'todoList';
 const CURRENT_TASK_STORAGE_KEY = 'currentTask';
+const TODO_DATE_STORAGE_KEY = 'todoListDate';
+const DAILY_TASK_EASTER_EGG_SETTING_KEY = 'dailyTaskEasterEggEnabled';
+const INITIAL_TASK_FOCUS_BACKFILL_STORAGE_KEY = 'taskFocusBackfill-2026-05-26-digital-report-v1';
 const LOCAL_TIMER_TICK_MS = 250;
+const DAILY_TODO_CHECK_MS = 60 * 1000;
 const COMPLETION_DIALOG_AUTO_HIDE_MS = 5200;
+const DEFAULT_IDLE_STATE = 'idle_1';
 
 const state = {
   page: 'home',
@@ -19,8 +24,11 @@ const state = {
   focusRecords: [],
   todoList: loadTodoList(),
   currentTaskId: loadCurrentTaskId(),
-  petState: 'idle',
+  todoListDate: loadTodoListDate(),
+  pendingTodoRollover: false,
+  petState: DEFAULT_IDLE_STATE,
   petReason: '',
+  dailyTaskEasterEggEnabled: loadDailyTaskEasterEggSetting(),
   hunger: 80,
   mood: '平静',
   points: 0,
@@ -31,41 +39,56 @@ const state = {
 };
 
 const PET_MESSAGES = {
-  idle: '小动物正在陪你',
+  idle_1: '小动物正在陪你',
+  idle_2: '小动物正在陪你',
   focus: '小动物正在陪你学习',
   rest: '小动物提醒你休息',
   happy: '小动物很开心',
+  fishing: '小动物正在钓鱼',
   hungry: '小动物有点饿了',
   hungry_heavy: '小动物已经很饿了',
   angry: '小动物生气了',
   sleep: '小动物睡着了',
   eating: '小动物正在吃补给',
+  eating_hamburger: '小动物正在吃汉堡',
+  eating_pizza: '小动物正在吃披萨',
+  eating_chicken_leg: '小动物正在吃鸡腿',
   finished_eating: '小动物吃得很开心'
 };
 
 const PET_STATE_TEXT = {
-  idle: '陪伴中',
+  idle_1: '陪伴中',
+  idle_2: '陪伴中',
   focus: '专注中',
   rest: '休息中',
   happy: '开心',
+  fishing: '钓鱼中',
   hungry: '有点饿',
   hungry_heavy: '很饿',
   angry: '生气了',
   sleep: '睡着了',
   eating: '进食中',
+  eating_hamburger: '吃汉堡中',
+  eating_pizza: '吃披萨中',
+  eating_chicken_leg: '吃鸡腿中',
   finished_eating: '吃完了'
 };
 
 const PET_IMAGES = {
-  idle: 'assets/pet/luoxiaohei/gif/luoxiaohei-idle.gif',
+  idle_1: 'assets/pet/luoxiaohei/gif/luoxiaohei-idle-1.gif',
+  idle_2: 'assets/pet/luoxiaohei/gif/luoxiaohei-idle.gif',
   focus: 'assets/pet/luoxiaohei/gif/luoxiaohei-focus.gif',
   rest: 'assets/pet/luoxiaohei/gif/luoxiaohei-rest.gif',
-  happy: 'assets/pet/luoxiaohei/gif/luoxiaohei-happy.gif',
+  happy: 'assets/pet/luoxiaohei/happy/happy_01.png',
+  fishing: 'assets/pet/luoxiaohei/gif/luoxiaohei-fishing.gif',
   hungry: 'assets/pet/luoxiaohei/gif/luoxiaohei-hungry.webp',
   hungry_heavy: 'assets/pet/luoxiaohei/gif/luoxiaohei-hungry-heavy.gif',
   angry: 'assets/pet/luoxiaohei/gif/luoxiaohei-angry.gif',
   sleep: 'assets/pet/luoxiaohei/gif/luoxiaohei-sleep.gif',
   eating: 'assets/pet/luoxiaohei/gif/luoxiaohei-eating.gif',
+  eating_hamburger: 'assets/pet/luoxiaohei/gif/luoxiaohei-eating-hamburger.png',
+  eating_pizza: 'assets/pet/luoxiaohei/gif/luoxiaohei-eating-pizza.gif',
+  eating_chicken_leg: 'assets/pet/luoxiaohei/gif/luoxiaohei-eating-chicken-leg.png',
   finished_eating: 'assets/pet/luoxiaohei/gif/luoxiaohei-finished-eating.gif'
 };
 
@@ -73,6 +96,12 @@ const navItems = document.querySelectorAll('.nav-item');
 const pages = document.querySelectorAll('[data-page-panel]');
 const toast = document.querySelector('#toast');
 const companionImage = document.querySelector('#companionImage');
+const companionCard = document.querySelector('.companion-card');
+const hungerText = document.querySelector('#hungerText');
+const hungerGuidance = document.querySelector('#hungerGuidance');
+const hungerGuidanceTitle = document.querySelector('#hungerGuidanceTitle');
+const hungerGuidanceText = document.querySelector('#hungerGuidanceText');
+const openShopButton = document.querySelector('#openShopButton');
 const todoForm = document.querySelector('#todoForm');
 const todoNameInput = document.querySelector('#todoNameInput');
 const todoTypeSelect = document.querySelector('#todoTypeSelect');
@@ -84,7 +113,16 @@ const journalRecentList = document.querySelector('#journalRecentList');
 const journalEmptyState = document.querySelector('#journalEmptyState');
 const completionDialog = document.querySelector('#completionDialog');
 const completionCloseButton = document.querySelector('#completionCloseButton');
+const dailyTaskEasterEggDialog = document.querySelector('#dailyTaskEasterEggDialog');
+const dailyTaskEasterEggImage = document.querySelector('#dailyTaskEasterEggImage');
+const dailyTaskEasterEggCloseButton = document.querySelector('#dailyTaskEasterEggCloseButton');
+const dailyTaskEasterEggToggle = document.querySelector('#dailyTaskEasterEggToggle');
+const todoRolloverDialog = document.querySelector('#todoRolloverDialog');
+const todoRolloverSummary = document.querySelector('#todoRolloverSummary');
+const todoRolloverCarryButton = document.querySelector('#todoRolloverCarryButton');
+const todoRolloverClearButton = document.querySelector('#todoRolloverClearButton');
 let appStatusPollTimer = null;
+let dailyTodoCheckTimer = null;
 
 const timeDisplays = [
   document.querySelector('#homeTimeText')
@@ -131,6 +169,9 @@ function loadTodoList() {
         type: task.type || '学习',
         estimatedPomodoros: Number(task.estimatedPomodoros) || 1,
         completedPomodoros: Number(task.completedPomodoros) || 0,
+        completedFocusRecordKeys: Array.isArray(task.completedFocusRecordKeys)
+          ? task.completedFocusRecordKeys.map(String)
+          : [],
         completed: Boolean(task.completed)
       }));
   } catch {
@@ -142,9 +183,22 @@ function loadCurrentTaskId() {
   return localStorage.getItem(CURRENT_TASK_STORAGE_KEY) || '';
 }
 
+function loadTodoListDate() {
+  return localStorage.getItem(TODO_DATE_STORAGE_KEY) || '';
+}
+
+function loadDailyTaskEasterEggSetting() {
+  return localStorage.getItem(DAILY_TASK_EASTER_EGG_SETTING_KEY) !== 'false';
+}
+
 function saveTodoState() {
   localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(state.todoList));
   localStorage.setItem(CURRENT_TASK_STORAGE_KEY, state.currentTaskId);
+  localStorage.setItem(TODO_DATE_STORAGE_KEY, state.todoListDate || getTodayKey());
+}
+
+function saveDailyTaskEasterEggSetting() {
+  localStorage.setItem(DAILY_TASK_EASTER_EGG_SETTING_KEY, String(state.dailyTaskEasterEggEnabled));
 }
 
 function createTaskId() {
@@ -157,6 +211,53 @@ function getCurrentTask() {
 
 function getCurrentTaskName() {
   return getCurrentTask()?.name || EMPTY_TASK_LABEL;
+}
+
+function getFocusRecordKey(record = {}) {
+  if (!record.focus_id || !record.completed_at) {
+    return '';
+  }
+
+  return `${record.focus_id}:${record.completed_at}`;
+}
+
+function addFocusRecordToTask(task, record) {
+  const recordKey = getFocusRecordKey(record);
+  if (!recordKey || task.completedFocusRecordKeys.includes(recordKey)) {
+    return false;
+  }
+
+  task.completedFocusRecordKeys.push(recordKey);
+  task.completedPomodoros += 1;
+  return true;
+}
+
+function syncTaskFocusProgress() {
+  let changed = false;
+  const tasksById = new Map(state.todoList.map((task) => [task.id, task]));
+
+  state.focusRecords.forEach((record) => {
+    const task = record.task_id ? tasksById.get(String(record.task_id)) : null;
+    if (task) {
+      changed = addFocusRecordToTask(task, record) || changed;
+    }
+  });
+
+  if (!localStorage.getItem(INITIAL_TASK_FOCUS_BACKFILL_STORAGE_KEY)) {
+    const reportTask = getCurrentTask();
+    if (reportTask?.name === '数电实验报告') {
+      state.focusRecords
+        .filter((record) => !record.task_id && record.completed_date === '2026-05-26')
+        .forEach((record) => {
+          changed = addFocusRecordToTask(reportTask, record) || changed;
+        });
+      localStorage.setItem(INITIAL_TASK_FOCUS_BACKFILL_STORAGE_KEY, 'true');
+    }
+  }
+
+  if (changed) {
+    saveTodoState();
+  }
 }
 
 function formatTime(totalSeconds) {
@@ -216,6 +317,34 @@ function showCompletionDialog() {
   void completionDialog.offsetWidth;
   completionDialog.classList.add('is-visible');
   showCompletionDialog.autoHideTimer = window.setTimeout(hideCompletionDialog, COMPLETION_DIALOG_AUTO_HIDE_MS);
+}
+
+function hideDailyTaskEasterEggDialog() {
+  if (!dailyTaskEasterEggDialog) {
+    return;
+  }
+
+  dailyTaskEasterEggDialog.classList.remove('is-visible');
+  window.clearTimeout(hideDailyTaskEasterEggDialog.hideTimer);
+  hideDailyTaskEasterEggDialog.hideTimer = window.setTimeout(() => {
+    if (dailyTaskEasterEggImage) {
+      dailyTaskEasterEggImage.removeAttribute('src');
+    }
+    dailyTaskEasterEggDialog.hidden = true;
+  }, 180);
+}
+
+function showDailyTaskEasterEggDialog() {
+  if (!dailyTaskEasterEggDialog || !dailyTaskEasterEggImage) {
+    return;
+  }
+
+  window.clearTimeout(hideDailyTaskEasterEggDialog.hideTimer);
+  dailyTaskEasterEggDialog.hidden = false;
+  dailyTaskEasterEggDialog.classList.remove('is-visible');
+  dailyTaskEasterEggImage.src = `assets/pet/luoxiaohei/gif/task-complete-fish.webp?restart=${Date.now()}`;
+  void dailyTaskEasterEggDialog.offsetWidth;
+  dailyTaskEasterEggDialog.classList.add('is-visible');
 }
 
 function getCompletedFocusKey(timerStatus = {}) {
@@ -278,18 +407,61 @@ function updateTimerView() {
   document.querySelector('#journalTodayText').textContent = String(state.completedToday);
 }
 
+function getHungerGuidance() {
+  if (state.petState === 'angry') {
+    const waitedTooLong = state.petReason.includes('持续太久');
+    return {
+      tone: 'danger',
+      title: waitedTooLong ? '太久没有投喂，小黑生气了' : '饱食度太低，小黑生气了',
+      text: '请尽快投喂，或到补给商店兑换食物。',
+      showShop: true
+    };
+  }
+
+  if (state.petState === 'hungry_heavy') {
+    return {
+      tone: 'warning',
+      title: '很饿，建议尽快投喂',
+      text: '继续挨饿会让小黑生气。',
+      showShop: true
+    };
+  }
+
+  if (state.petState === 'hungry') {
+    return {
+      tone: 'watch',
+      title: '有点饿了，喂点东西吧',
+      text: '可以直接投喂，也可以去补给商店。',
+      showShop: true
+    };
+  }
+
+  return {
+    tone: 'calm',
+    title: '状态良好',
+    text: '小黑现在不需要补给。',
+    showShop: false
+  };
+}
+
 function updateCompanionView() {
-  const message = state.petReason || PET_MESSAGES[state.petState] || PET_MESSAGES.idle;
-  const petText = PET_STATE_TEXT[state.petState] || PET_STATE_TEXT.idle;
+  const message = state.petReason || PET_MESSAGES[state.petState] || PET_MESSAGES[DEFAULT_IDLE_STATE];
+  const petText = PET_STATE_TEXT[state.petState] || PET_STATE_TEXT[DEFAULT_IDLE_STATE];
+  const guidance = getHungerGuidance();
 
   document.querySelector('#homeMessageText').textContent = message;
   document.querySelector('#companionMessageText').textContent = message;
   document.querySelector('#companionStateText').textContent = petText;
-  document.querySelector('#hungerText').textContent = `${state.hunger}%`;
+  hungerText.textContent = `${state.hunger}%`;
   document.querySelector('#moodText').textContent = state.mood;
   document.querySelector('#pointsText').textContent = String(state.points);
   document.querySelector('#journalPointsText').textContent = String(state.points);
-  companionImage.src = PET_IMAGES[state.petState] || PET_IMAGES.idle;
+  companionImage.src = PET_IMAGES[state.petState] || PET_IMAGES[DEFAULT_IDLE_STATE];
+  companionCard.dataset.hungerTone = guidance.tone;
+  hungerGuidance.dataset.tone = guidance.tone;
+  hungerGuidanceTitle.textContent = guidance.title;
+  hungerGuidanceText.textContent = guidance.text;
+  openShopButton.hidden = !guidance.showShop;
 }
 
 function formatMood(value) {
@@ -310,7 +482,7 @@ function formatMood(value) {
 
 function applyPetStatus(petStatus = {}) {
   if (petStatus.state) {
-    state.petState = petStatus.state;
+    state.petState = petStatus.state === 'idle' ? DEFAULT_IDLE_STATE : petStatus.state;
   }
 
   state.petReason = typeof petStatus.reason === 'string' ? petStatus.reason : '';
@@ -345,6 +517,7 @@ function applyAppStatus(data = {}) {
 
   if (Array.isArray(focusStats.records)) {
     state.focusRecords = focusStats.records;
+    syncTaskFocusProgress();
   }
 
   if (Number.isFinite(data.remaining_seconds)) {
@@ -370,6 +543,7 @@ function applyAppStatus(data = {}) {
   state.timerMode = timerStatus.mode || state.timerMode;
   syncLocalTimerSnapshot(timerStatus);
   state.hasLoadedAppStatus = true;
+  maybeShowPendingTodoRollover();
 }
 
 async function requestBackend(path, options = {}) {
@@ -452,11 +626,138 @@ function updateTodoStats() {
   document.querySelector('#todoListSummary').textContent = `${total} ${total === 1 ? 'task' : 'tasks'}`;
 }
 
+function areAllTodoTasksCompleted() {
+  return state.todoList.length > 0 && state.todoList.every((task) => task.completed);
+}
+
+function maybeShowDailyTaskEasterEgg(wasAllCompleted) {
+  if (
+    !wasAllCompleted &&
+    state.dailyTaskEasterEggEnabled &&
+    areAllTodoTasksCompleted()
+  ) {
+    showDailyTaskEasterEggDialog();
+  }
+}
+
 function toDateKey(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function getTodayKey() {
+  return toDateKey(new Date());
+}
+
+function getTodoRolloverCounts() {
+  const unfinished = state.todoList.filter((task) => !task.completed).length;
+
+  return {
+    unfinished,
+    completed: state.todoList.length - unfinished
+  };
+}
+
+function shouldDeferTodoRollover() {
+  return state.isRunning && state.timerMode === 'focus';
+}
+
+function hideTodoRolloverDialog() {
+  if (!todoRolloverDialog) {
+    return;
+  }
+
+  todoRolloverDialog.classList.remove('is-visible');
+  window.clearTimeout(hideTodoRolloverDialog.hideTimer);
+  hideTodoRolloverDialog.hideTimer = window.setTimeout(() => {
+    todoRolloverDialog.hidden = true;
+  }, 180);
+}
+
+function showTodoRolloverDialog() {
+  if (!todoRolloverDialog || !state.pendingTodoRollover) {
+    return;
+  }
+
+  if (!todoRolloverDialog.hidden && todoRolloverDialog.classList.contains('is-visible')) {
+    return;
+  }
+
+  const { unfinished, completed } = getTodoRolloverCounts();
+  if (todoRolloverSummary) {
+    todoRolloverSummary.textContent = completed > 0
+      ? `昨天还有 ${unfinished} 个未完成待办，${completed} 个已完成待办会自动清掉。要延续未完成待办到今天吗？`
+      : `昨天还有 ${unfinished} 个未完成待办，要延续到今天吗？`;
+  }
+
+  window.clearTimeout(hideTodoRolloverDialog.hideTimer);
+  todoRolloverDialog.hidden = false;
+  todoRolloverDialog.classList.remove('is-visible');
+  void todoRolloverDialog.offsetWidth;
+  todoRolloverDialog.classList.add('is-visible');
+}
+
+function maybeShowPendingTodoRollover() {
+  if (state.pendingTodoRollover && !shouldDeferTodoRollover()) {
+    showTodoRolloverDialog();
+  }
+}
+
+function checkTodoRollover() {
+  const today = getTodayKey();
+
+  if (!state.todoListDate) {
+    state.todoListDate = today;
+    saveTodoState();
+    return;
+  }
+
+  if (state.todoListDate === today) {
+    state.pendingTodoRollover = false;
+    return;
+  }
+
+  if (state.todoList.length === 0) {
+    state.currentTaskId = '';
+    state.todoListDate = today;
+    state.pendingTodoRollover = false;
+    saveTodoState();
+    renderTodoView();
+    updateTimerView();
+    return;
+  }
+
+  state.pendingTodoRollover = true;
+  maybeShowPendingTodoRollover();
+}
+
+function carryOverTodoTasksToToday() {
+  const unfinishedTasks = state.todoList.filter((task) => !task.completed);
+
+  state.todoList = unfinishedTasks;
+  if (!state.todoList.some((task) => task.id === state.currentTaskId)) {
+    state.currentTaskId = '';
+  }
+
+  state.todoListDate = getTodayKey();
+  state.pendingTodoRollover = false;
+  saveTodoState();
+  hideTodoRolloverDialog();
+  render();
+  showToast(`已延续 ${unfinishedTasks.length} 个未完成待办`);
+}
+
+function clearTodoTasksForToday() {
+  state.todoList = [];
+  state.currentTaskId = '';
+  state.todoListDate = getTodayKey();
+  state.pendingTodoRollover = false;
+  saveTodoState();
+  hideTodoRolloverDialog();
+  render();
+  showToast('已清空今日待办');
 }
 
 function addDays(date, amount) {
@@ -682,6 +983,7 @@ function addTodo(event) {
     type: todoTypeSelect.value,
     estimatedPomodoros: Number(todoPomodoroSelect.value),
     completedPomodoros: 0,
+    completedFocusRecordKeys: [],
     completed: false
   };
 
@@ -699,8 +1001,8 @@ function toggleTodoComplete(taskId, completed) {
     return;
   }
 
+  const wasAllCompleted = areAllTodoTasksCompleted();
   task.completed = completed;
-  task.completedPomodoros = completed ? task.estimatedPomodoros : 0;
 
   if (completed && state.currentTaskId === taskId) {
     state.currentTaskId = '';
@@ -708,6 +1010,7 @@ function toggleTodoComplete(taskId, completed) {
 
   saveTodoState();
   render();
+  maybeShowDailyTaskEasterEgg(wasAllCompleted);
 }
 
 function setCurrentTask(taskId) {
@@ -782,7 +1085,10 @@ async function startFocus() {
 
   try {
     stopTimer();
-    const timerStatus = await requestBackend('/timer/start', { method: 'POST' });
+    const timerStatus = await requestBackend('/timer/start', {
+      method: 'POST',
+      body: JSON.stringify({ task_id: getCurrentTask()?.id || null })
+    });
     applyAppStatus({ timer: timerStatus, remaining_seconds: timerStatus.remaining_seconds });
     await refreshAppStatus();
     showToast('已开始专注');
@@ -821,6 +1127,7 @@ async function resetFocus() {
 }
 
 async function feedWithFood(foodId, fallbackName) {
+  const previousPetState = state.petState;
   try {
     const result = await requestBackend('/shop/redeem', {
       method: 'POST',
@@ -842,7 +1149,21 @@ async function feedWithFood(foodId, fallbackName) {
     }
 
     render();
-    showToast(result.message || `已兑换${fallbackName}`);
+    const hungerAdded = result.feed_result?.hunger_added;
+    const resultingHunger = result.feed_result?.status?.hunger;
+    let feedMessage = Number.isFinite(hungerAdded) && hungerAdded > 0
+      ? `投喂成功，饱食度 +${hungerAdded}`
+      : '投喂成功，小黑已经吃饱了';
+
+    if (['angry', 'hungry_heavy'].includes(previousPetState) && Number.isFinite(resultingHunger)) {
+      if (resultingHunger >= 30) {
+        feedMessage += '，小黑恢复精神了';
+      } else if (previousPetState === 'angry') {
+        feedMessage += '，小黑不生气了，但还需要补给';
+      }
+    }
+
+    showToast(feedMessage || result.message || `已兑换${fallbackName}`);
 
     window.setTimeout(() => refreshAppStatus(), 2600);
     window.setTimeout(() => refreshAppStatus(), 5600);
@@ -856,7 +1177,7 @@ function redeemSupply(itemName, foodId) {
 }
 
 function feedPet() {
-  feedWithFood('fish', '小鱼干');
+  feedWithFood('hamburger', '汉堡');
 }
 
 function showPetStatus(status) {
@@ -879,7 +1200,7 @@ async function openPetWindow() {
     return;
   }
 
-  const status = await window.petodo.openPetWindow();
+  const status = await window.petodo.openPetWindow({ openingAnimation: true });
   showPetStatus(status);
 }
 
@@ -922,12 +1243,25 @@ todoForm.addEventListener('submit', addTodo);
 todoListElement.addEventListener('click', handleTodoListClick);
 todoListElement.addEventListener('change', handleTodoListChange);
 document.querySelector('#feedButton').addEventListener('click', feedPet);
+openShopButton.addEventListener('click', () => setPage('shop'));
 document.querySelector('#openPetButton').addEventListener('click', openPetWindow);
 document.querySelector('#closePetButton').addEventListener('click', closePetWindow);
 completionCloseButton?.addEventListener('click', hideCompletionDialog);
+dailyTaskEasterEggCloseButton?.addEventListener('click', hideDailyTaskEasterEggDialog);
+todoRolloverCarryButton?.addEventListener('click', carryOverTodoTasksToToday);
+todoRolloverClearButton?.addEventListener('click', clearTodoTasksForToday);
+dailyTaskEasterEggToggle?.addEventListener('change', () => {
+  state.dailyTaskEasterEggEnabled = dailyTaskEasterEggToggle.checked;
+  saveDailyTaskEasterEggSetting();
+});
+
+if (dailyTaskEasterEggToggle) {
+  dailyTaskEasterEggToggle.checked = state.dailyTaskEasterEggEnabled;
+}
 
 render();
-refreshAppStatus();
+refreshAppStatus().finally(checkTodoRollover);
 refreshPetStatus();
 appStatusPollTimer = window.setInterval(refreshAppStatus, 2000);
+dailyTodoCheckTimer = window.setInterval(checkTodoRollover, DAILY_TODO_CHECK_MS);
 window.setInterval(refreshPetStatus, 2000);
