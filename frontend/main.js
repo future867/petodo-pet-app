@@ -606,17 +606,18 @@ function createCountdownWidgetWindow() {
   }
 
   countdownWidgetWindow = new BrowserWindow({
-    width: 260,
-    height: 180,
-    minWidth: 260,
-    minHeight: 180,
-    maxWidth: 320,
-    maxHeight: 240,
+    width: 300,
+    height: 240,
+    minWidth: 300,
+    minHeight: 240,
+    maxWidth: 340,
+    maxHeight: 280,
     frame: false,
     transparent: true,
     resizable: false,
     alwaysOnTop: true,
     skipTaskbar: true,
+    hasShadow: false,
     backgroundColor: '#00000000',
     title: 'Petodo 倒计时小组件',
     webPreferences: {
