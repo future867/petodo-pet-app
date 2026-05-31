@@ -607,11 +607,11 @@ function createCountdownWidgetWindow() {
 
   countdownWidgetWindow = new BrowserWindow({
     width: 300,
-    height: 240,
+    height: 260,
     minWidth: 300,
-    minHeight: 240,
+    minHeight: 260,
     maxWidth: 340,
-    maxHeight: 280,
+    maxHeight: 300,
     frame: false,
     transparent: true,
     resizable: false,

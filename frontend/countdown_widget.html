@@ -25,8 +25,8 @@
     }
 
     .widget-shell {
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
       width: 100%;
       height: 100%;
       padding: 18px 18px 16px;
@@ -36,6 +36,7 @@
       box-shadow: 0 6px 18px rgba(20, 20, 19, 0.06);
       -webkit-app-region: drag;
       box-sizing: border-box;
+      gap: 14px;
     }
 
     .widget-toolbar,
@@ -49,7 +50,6 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 18px;
     }
 
     .widget-kicker,
@@ -83,9 +83,9 @@
     .widget-body {
       display: grid;
       align-content: start;
-      gap: 10px;
-      flex: 1 1 auto;
+      gap: 12px;
       min-height: 0;
+      padding-bottom: 6px;
     }
 
     .widget-title {
@@ -104,10 +104,11 @@
 
     .widget-status {
       color: var(--accent);
-      font-size: 30px;
+      font-size: 28px;
       font-weight: 700;
-      line-height: 1.2;
+      line-height: 1.15;
       overflow-wrap: anywhere;
+      margin-top: 2px;
     }
 
     .widget-status.is-today {
@@ -127,7 +128,8 @@
     .widget-actions {
       display: flex;
       justify-content: flex-start;
-      margin-top: 14px;
+      margin-top: 0;
+      padding-top: 4px;
     }
 
     .widget-refresh {
