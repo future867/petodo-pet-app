@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>今日待办小组件</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    :root {
+      color-scheme: light;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+      background: transparent;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      padding: 10px;
+      overflow: hidden;
+    }
+
+    .todo-widget-shell {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 300px;
+      padding: 14px;
+      border: 1px solid rgba(222, 220, 209, 0.92);
+      border-radius: 24px;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.98), rgba(255, 247, 239, 0.9) 46%, rgba(250, 249, 245, 0.92)),
+        rgba(255, 254, 250, 0.92);
+      box-shadow: 0 18px 42px rgba(20, 20, 19, 0.15);
+      backdrop-filter: blur(14px);
+      -webkit-app-region: drag;
+    }
+
+    .todo-widget-toolbar,
+    .todo-widget-list,
+    .todo-widget-actions,
+    .todo-widget-empty {
+      -webkit-app-region: no-drag;
+    }
+
+    .todo-widget-toolbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .todo-widget-kicker,
+    .todo-widget-title,
+    .todo-widget-summary,
+    .todo-widget-empty p {
+      margin: 0;
+    }
+
+    .todo-widget-kicker {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .todo-widget-title {
+      margin-top: 3px;
+      font-size: 22px;
+      line-height: 1.15;
+    }
+
+    .todo-widget-summary {
+      margin-top: 5px;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .todo-widget-close {
+      display: inline-grid;
+      flex: 0 0 auto;
+      width: 28px;
+      height: 28px;
+      place-items: center;
+      border: 1px solid rgba(222, 220, 209, 0.92);
+      border-radius: 999px;
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.74);
+      cursor: pointer;
+    }
+
+    .todo-widget-list {
+      display: grid;
+      gap: 8px;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .todo-widget-item {
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      min-height: 38px;
+      padding: 8px 9px;
+      border: 1px solid rgba(222, 220, 209, 0.86);
+      border-radius: 14px;
+      background: rgba(255, 254, 250, 0.78);
+    }
+
+    .todo-widget-item.is-completed {
+      opacity: 0.58;
+    }
+
+    .todo-widget-item input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent);
+    }
+
+    .todo-widget-name {
+      overflow: hidden;
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.35;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .todo-widget-item.is-completed .todo-widget-name {
+      text-decoration: line-through;
+    }
+
+    .todo-widget-status {
+      color: var(--text-muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .todo-widget-empty {
+      display: grid;
+      flex: 1;
+      place-items: center;
+      padding: 18px;
+      border: 1px dashed rgba(222, 220, 209, 0.92);
+      border-radius: 18px;
+      background: rgba(243, 240, 232, 0.62);
+      text-align: center;
+    }
+
+    .todo-widget-empty[hidden] {
+      display: none;
+    }
+
+    .todo-widget-empty p {
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .todo-widget-actions {
+      display: grid;
+      grid-template-columns: 1fr 1.25fr;
+      gap: 8px;
+      margin-top: auto;
+      padding-top: 12px;
+    }
+
+    .todo-widget-actions .btn {
+      min-height: 34px;
+      padding: 0 10px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <main class="todo-widget-shell" aria-label="今日待办桌面小组件">
+    <div class="todo-widget-toolbar">
+      <div>
+        <p class="todo-widget-kicker">Petodo</p>
+        <h1 class="todo-widget-title">今日待办</h1>
+        <p class="todo-widget-summary" id="todoWidgetSummary">正在读取待办...</p>
+      </div>
+      <button class="todo-widget-close" id="todoWidgetCloseButton" type="button" aria-label="关闭小组件">×</button>
+    </div>
+
+    <section class="todo-widget-list" id="todoWidgetList" aria-label="今日待办列表"></section>
+
+    <section class="todo-widget-empty" id="todoWidgetEmpty" hidden>
+      <p>今天还没有待办，给自己安排一个小目标吧。</p>
+    </section>
+
+    <div class="todo-widget-actions">
+      <button class="btn btn-secondary" id="todoWidgetRefreshButton" type="button">刷新</button>
+      <button class="btn btn-primary" id="todoWidgetOpenMainButton" type="button">打开主窗口</button>
+    </div>
+  </main>
+
+  <script src="todo_widget.js"></script>
+</body>
+</html>

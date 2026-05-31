@@ -30,7 +30,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -53,6 +54,8 @@ button {
 .note-card,
 .todo-form-card,
 .todo-list-card,
+.countdown-form-card,
+.countdown-list-card,
 .shop-item,
 .stat-card,
 .journal-card,
@@ -399,6 +402,106 @@ h2 {
   margin-top: 18px;
 }
 
+.countdown-header {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.page-header > .countdown-header-actions {
+  display: none;
+}
+
+.countdown-header > .countdown-header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.countdown-header .eyebrow {
+  margin-bottom: 10px;
+  font-size: 17px;
+  letter-spacing: 0.02em;
+}
+
+.countdown-header h1 {
+  font-size: clamp(52px, 7vw, 68px);
+  line-height: 1;
+}
+
+.countdown-header p:last-child {
+  max-width: 680px;
+  margin-top: 20px;
+  font-size: 19px;
+  line-height: 1.65;
+}
+
+.countdown-add-button {
+  display: inline-grid;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--surface);
+  background: var(--accent);
+  box-shadow: 0 8px 18px rgba(217, 119, 87, 0.16);
+  font-size: 0;
+  cursor: pointer;
+  transition: transform 120ms ease, background 160ms ease;
+}
+
+.countdown-widget-button {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: rgba(255, 254, 250, 0.92);
+}
+
+.countdown-add-button span {
+  display: block;
+  transform: translateY(-1px);
+  color: inherit;
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.countdown-add-button:hover {
+  background: #c96849;
+}
+
+.countdown-add-button:active {
+  transform: translateY(1px);
+}
+
+.countdown-layout {
+  display: grid;
+  justify-items: center;
+}
+
+.countdown-list-card {
+  width: min(100%, 780px);
+  padding: 18px 18px 20px;
+}
+
+.countdown-list-card .section-title h2 {
+  font-size: 19px;
+}
+
+.countdown-list-card .section-title span {
+  font-size: 14px;
+}
+
+.countdown-form {
+  display: grid;
+  gap: 16px;
+}
+
 .field {
   display: grid;
   gap: 8px;
@@ -410,9 +513,9 @@ h2 {
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   width: 100%;
-  min-height: 42px;
   padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -421,8 +524,21 @@ h2 {
   outline: none;
 }
 
+.field input,
+.field select {
+  min-height: 42px;
+}
+
+.field textarea {
+  min-height: 112px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  resize: vertical;
+}
+
 .field input:focus,
-.field select:focus {
+.field select:focus,
+.field textarea:focus {
   border-color: var(--accent);
 }
 
@@ -547,6 +663,140 @@ h2 {
   line-height: 1.7;
 }
 
+.countdown-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.countdown-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 18px;
+  align-items: center;
+  min-height: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fffefa 0%, #fcf8f2 100%);
+}
+
+.countdown-main {
+  display: grid;
+  gap: 8px;
+}
+
+.countdown-title,
+.countdown-date,
+.countdown-note {
+  margin: 0;
+}
+
+.countdown-title {
+  font-size: 26px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.countdown-title.is-completed {
+  color: #6a6962;
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  text-decoration-color: rgba(20, 20, 19, 0.48);
+}
+
+.countdown-note {
+  color: var(--text-secondary);
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.countdown-side {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  text-align: right;
+}
+
+.countdown-status-block {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.countdown-status-label {
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.countdown-status-value-row {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.countdown-status-value {
+  color: var(--accent);
+  font-size: 48px;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+}
+
+.countdown-status-suffix {
+  color: var(--text-main);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.countdown-status-block.is-today .countdown-status-value,
+.countdown-status-block.is-today .countdown-status-suffix,
+.countdown-status-text.is-today {
+  color: #3b6c48;
+}
+
+.countdown-status-block.is-completed .countdown-status-value,
+.countdown-status-block.is-completed .countdown-status-suffix,
+.countdown-status-text.is-completed {
+  color: #6a6962;
+}
+
+.countdown-date {
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.countdown-status-text {
+  margin: 0;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.countdown-item-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-self: end;
+}
+
+.countdown-item-footer .btn {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.countdown-item-footer .btn-ghost {
+  background: rgba(255, 254, 250, 0.86);
+}
+
+.countdown-item.is-completed {
+  background: linear-gradient(180deg, #fcfbf7 0%, #f6f3ec 100%);
+}
+
 .companion-panel {
   min-width: 0;
 }
@@ -562,6 +812,22 @@ h2 {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.todo-list-title {
+  align-items: flex-start;
+}
+
+.todo-list-title > div {
+  display: grid;
+  gap: 5px;
+}
+
+.todo-widget-button {
+  min-height: 36px;
+  padding: 0 13px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 .section-title span {
@@ -1001,6 +1267,55 @@ h2 {
   min-width: 132px;
 }
 
+.countdown-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.countdown-modal.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.countdown-modal[hidden] {
+  display: none;
+}
+
+.countdown-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 20, 19, 0.22);
+  backdrop-filter: blur(4px);
+}
+
+.countdown-modal-card {
+  position: relative;
+  width: min(460px, 100%);
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 24px 70px rgba(20, 20, 19, 0.18);
+}
+
+.countdown-modal-card .countdown-form {
+  margin-top: 18px;
+}
+
+.countdown-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
 .completion-label {
   color: var(--accent) !important;
   font-size: 13px;
@@ -1146,6 +1461,88 @@ h2 {
     margin-top: 0;
   }
 
+  .countdown-header {
+    flex-direction: column;
+  }
+
+  .countdown-header > .countdown-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .countdown-widget-button {
+    flex: 1 1 auto;
+  }
+
+  .todo-list-title {
+    flex-direction: column;
+  }
+
+  .todo-widget-button {
+    width: 100%;
+  }
+
+  .countdown-header h1 {
+    font-size: 44px;
+  }
+
+  .countdown-header p:last-child {
+    margin-top: 14px;
+    font-size: 17px;
+  }
+
+  .countdown-add-button {
+    width: 38px;
+    height: 38px;
+  }
+
+  .countdown-add-button span {
+    font-size: 28px;
+  }
+
+  .countdown-list-card {
+    padding: 16px;
+  }
+
+  .countdown-main h2 {
+    font-size: 22px;
+  }
+
+  .countdown-item {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    align-items: start;
+  }
+
+  .countdown-side {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .countdown-status-block {
+    justify-items: start;
+  }
+
+  .countdown-status-value {
+    font-size: 38px;
+  }
+
+  .countdown-status-suffix {
+    font-size: 16px;
+  }
+
+  .countdown-date {
+    font-size: 14px;
+  }
+
+  .countdown-note {
+    font-size: 15px;
+  }
+
+  .countdown-item-footer {
+    justify-content: flex-start;
+  }
+
   .sidebar-footer {
     margin-top: 0;
   }
@@ -1157,6 +1554,10 @@ h2 {
 
   .shop-item {
     grid-template-columns: 1fr;
+  }
+
+  .countdown-modal-actions {
+    flex-direction: column-reverse;
   }
 
   .item-action {

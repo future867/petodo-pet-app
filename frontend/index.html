@@ -22,6 +22,7 @@
         <button class="nav-item" type="button" data-page="todo">待办清单</button>
         <button class="nav-item" type="button" data-page="shop">补给商店</button>
         <button class="nav-item" type="button" data-page="journal">专注记录</button>
+        <button class="nav-item" type="button" data-page="countdown">未来倒计时</button>
         <button class="nav-item" type="button" data-page="settings">设置</button>
       </nav>
 
@@ -37,6 +38,9 @@
           <p class="eyebrow">Warm study log</p>
           <h1 id="homeTitle">Petodo</h1>
           <p>和小动物一起完成今天的专注。</p>
+          <div class="countdown-header-actions">
+            <button class="btn btn-secondary countdown-widget-button" id="countdownWidgetButton" type="button">打开桌面小组件</button>
+          </div>
         </header>
 
         <section class="timer-card" aria-label="今日番茄钟">
@@ -125,9 +129,12 @@
           </section>
 
           <section class="todo-list-card" aria-label="今日待办任务列表">
-            <div class="section-title">
-              <h2>今日待办</h2>
-              <span id="todoListSummary">0 tasks</span>
+            <div class="section-title todo-list-title">
+              <div>
+                <h2>今日待办</h2>
+                <span id="todoListSummary">0 tasks</span>
+              </div>
+              <button class="btn btn-secondary todo-widget-button" id="todoWidgetButton" type="button">打开桌面小组件</button>
             </div>
 
             <div class="todo-list" id="todoList"></div>
@@ -238,6 +245,37 @@
             <p>还没有完成的专注，先开始一次 25 分钟。</p>
           </div>
         </section>
+      </section>
+
+      <section class="page" id="page-countdown" data-page-panel="countdown" aria-labelledby="countdownTitle">
+        <header class="page-header compact countdown-header">
+          <div>
+            <p class="eyebrow">Future Countdown</p>
+            <h1 id="countdownTitle">未来倒计时</h1>
+            <p>记录重要目标，看看距离它还有多少天</p>
+          </div>
+          <div class="countdown-header-actions">
+            <button class="btn btn-secondary countdown-widget-button" id="countdownWidgetButton" type="button">打开桌面小组件</button>
+            <button class="countdown-add-button" id="countdownAddButton" type="button" aria-label="添加未来倒计时">
+            <span aria-hidden="true">+</span>
+            </button>
+          </div>
+        </header>
+
+        <div class="countdown-layout">
+          <section class="countdown-list-card" aria-label="未来倒计时目标列表">
+            <div class="section-title">
+              <h2>目标列表</h2>
+              <span id="countdownListSummary">0 个目标</span>
+            </div>
+
+            <div class="countdown-list" id="countdownList"></div>
+
+            <div class="empty-state" id="countdownEmptyState">
+              <p>还没有添加未来目标，点击右上角 + 记录一个你正在努力靠近的日子。</p>
+            </div>
+          </section>
+        </div>
       </section>
 
       <section class="page" id="page-settings" data-page-panel="settings" aria-labelledby="settingsTitle">
@@ -381,6 +419,49 @@
         <button class="btn btn-primary" id="todoRolloverCarryButton" type="button">延续未完成</button>
         <button class="btn btn-secondary" id="todoRolloverClearButton" type="button">清空全部</button>
       </div>
+    </div>
+  </section>
+
+  <section class="countdown-modal" id="countdownModal" role="dialog" aria-modal="true" aria-labelledby="countdownModalTitle" hidden>
+    <div class="countdown-modal-backdrop" id="countdownModalBackdrop"></div>
+    <div class="countdown-modal-card">
+      <div class="section-title">
+        <h2 id="countdownModalTitle">添加未来倒计时</h2>
+      </div>
+
+      <form id="countdownForm" class="countdown-form">
+        <label class="field">
+          <span>目标名称</span>
+          <input
+            id="countdownNameInput"
+            type="text"
+            placeholder="六级考试"
+            autocomplete="off"
+          >
+        </label>
+
+        <label class="field">
+          <span>目标日期</span>
+          <input
+            id="countdownDateInput"
+            type="date"
+          >
+        </label>
+
+        <label class="field">
+          <span>备注</span>
+          <textarea
+            id="countdownNoteInput"
+            rows="4"
+            placeholder="每天背 50 个单词"
+          ></textarea>
+        </label>
+
+        <div class="countdown-modal-actions">
+          <button class="btn btn-secondary" id="countdownModalCancelButton" type="button">取消</button>
+          <button class="btn btn-primary" type="submit">确认添加</button>
+        </div>
+      </form>
     </div>
   </section>
 

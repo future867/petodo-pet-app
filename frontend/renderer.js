@@ -4,12 +4,14 @@ const EMPTY_TASK_LABEL = '暂未选择任务';
 const TODO_STORAGE_KEY = 'todoList';
 const CURRENT_TASK_STORAGE_KEY = 'currentTask';
 const TODO_DATE_STORAGE_KEY = 'todoListDate';
+const COUNTDOWN_STORAGE_KEY = 'countdownGoals';
 const DAILY_TASK_EASTER_EGG_SETTING_KEY = 'dailyTaskEasterEggEnabled';
 const INITIAL_TASK_FOCUS_BACKFILL_STORAGE_KEY = 'taskFocusBackfill-2026-05-26-digital-report-v1';
 const LOCAL_TIMER_TICK_MS = 250;
 const DAILY_TODO_CHECK_MS = 60 * 1000;
 const COMPLETION_DIALOG_AUTO_HIDE_MS = 5200;
 const DEFAULT_IDLE_STATE = 'idle_1';
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 const state = {
   page: 'home',
@@ -23,6 +25,7 @@ const state = {
   totalFocusSeconds: 0,
   focusRecords: [],
   todoList: loadTodoList(),
+  countdownList: loadCountdownList(),
   currentTaskId: loadCurrentTaskId(),
   todoListDate: loadTodoListDate(),
   pendingTodoRollover: false,
@@ -94,6 +97,7 @@ const PET_IMAGES = {
 
 const navItems = document.querySelectorAll('.nav-item');
 const pages = document.querySelectorAll('[data-page-panel]');
+document.querySelector('#page-home .countdown-header-actions')?.remove();
 const toast = document.querySelector('#toast');
 const companionImage = document.querySelector('#companionImage');
 const companionCard = document.querySelector('.companion-card');
@@ -108,6 +112,18 @@ const todoTypeSelect = document.querySelector('#todoTypeSelect');
 const todoPomodoroSelect = document.querySelector('#todoPomodoroSelect');
 const todoListElement = document.querySelector('#todoList');
 const todoEmptyState = document.querySelector('#todoEmptyState');
+const todoWidgetButton = document.querySelector('#todoWidgetButton');
+const countdownAddButton = document.querySelector('#countdownAddButton');
+const countdownWidgetButton = document.querySelector('#page-countdown #countdownWidgetButton');
+const countdownModal = document.querySelector('#countdownModal');
+const countdownModalBackdrop = document.querySelector('#countdownModalBackdrop');
+const countdownModalCancelButton = document.querySelector('#countdownModalCancelButton');
+const countdownForm = document.querySelector('#countdownForm');
+const countdownNameInput = document.querySelector('#countdownNameInput');
+const countdownDateInput = document.querySelector('#countdownDateInput');
+const countdownNoteInput = document.querySelector('#countdownNoteInput');
+const countdownListElement = document.querySelector('#countdownList');
+const countdownEmptyState = document.querySelector('#countdownEmptyState');
 const journalDayList = document.querySelector('#journalDayList');
 const journalRecentList = document.querySelector('#journalRecentList');
 const journalEmptyState = document.querySelector('#journalEmptyState');
@@ -179,6 +195,39 @@ function loadTodoList() {
   }
 }
 
+function isValidDateKey(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day;
+}
+
+function loadCountdownList() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(COUNTDOWN_STORAGE_KEY) || '[]');
+    if (!Array.isArray(saved)) {
+      return [];
+    }
+
+    return saved
+      .filter((goal) => goal && typeof goal.name === 'string' && isValidDateKey(goal.targetDate))
+      .map((goal) => ({
+        id: String(goal.id || createCountdownId()),
+        name: goal.name.trim(),
+        targetDate: goal.targetDate,
+        note: typeof goal.note === 'string' ? goal.note.trim() : ''
+      }))
+      .filter((goal) => goal.name);
+  } catch {
+    return [];
+  }
+}
+
 function loadCurrentTaskId() {
   return localStorage.getItem(CURRENT_TASK_STORAGE_KEY) || '';
 }
@@ -195,6 +244,108 @@ function saveTodoState() {
   localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(state.todoList));
   localStorage.setItem(CURRENT_TASK_STORAGE_KEY, state.currentTaskId);
   localStorage.setItem(TODO_DATE_STORAGE_KEY, state.todoListDate || getTodayKey());
+
+  if (window.petodo?.saveTodoState) {
+    window.petodo.saveTodoState({
+      todoList: state.todoList,
+      currentTaskId: state.currentTaskId,
+      todoListDate: state.todoListDate || getTodayKey()
+    }).catch((error) => {
+      console.warn('Failed to save todo state to desktop storage:', error);
+    });
+  }
+}
+
+function applyTodoState(todoState = {}) {
+  state.todoList = Array.isArray(todoState.todoList) ? todoState.todoList : [];
+  state.currentTaskId = typeof todoState.currentTaskId === 'string' ? todoState.currentTaskId : '';
+  state.todoListDate = typeof todoState.todoListDate === 'string' ? todoState.todoListDate : '';
+
+  if (state.currentTaskId && !getCurrentTask()) {
+    state.currentTaskId = '';
+  }
+
+  localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(state.todoList));
+  localStorage.setItem(CURRENT_TASK_STORAGE_KEY, state.currentTaskId);
+  localStorage.setItem(TODO_DATE_STORAGE_KEY, state.todoListDate || getTodayKey());
+}
+
+async function loadTodoState() {
+  const legacyState = {
+    todoList: loadTodoList(),
+    currentTaskId: loadCurrentTaskId(),
+    todoListDate: loadTodoListDate()
+  };
+
+  if (!window.petodo?.loadTodoState || !window.petodo?.saveTodoState) {
+    applyTodoState(legacyState);
+    return legacyState;
+  }
+
+  try {
+    const savedState = await window.petodo.loadTodoState();
+    const hasSavedTodos = Array.isArray(savedState?.todoList) && savedState.todoList.length > 0;
+    const hasSavedDate = Boolean(savedState?.todoListDate);
+    const hasLegacyTodos = legacyState.todoList.length > 0;
+
+    if (!hasSavedTodos && !hasSavedDate && hasLegacyTodos) {
+      const migratedState = await window.petodo.saveTodoState(legacyState);
+      applyTodoState(migratedState);
+      return migratedState;
+    }
+
+    applyTodoState(savedState);
+    return savedState;
+  } catch (error) {
+    console.warn('Failed to load todo state from desktop storage:', error);
+    applyTodoState(legacyState);
+    return legacyState;
+  }
+}
+
+async function loadCountdownState() {
+  const legacyGoals = loadCountdownList();
+
+  if (!window.petodo?.loadCountdownGoals || !window.petodo?.saveCountdownGoals) {
+    state.countdownList = legacyGoals;
+    return legacyGoals;
+  }
+
+  try {
+    const savedGoals = await window.petodo.loadCountdownGoals();
+    const normalizedSavedGoals = Array.isArray(savedGoals) ? savedGoals : [];
+
+    if (normalizedSavedGoals.length === 0 && legacyGoals.length > 0) {
+      const migratedGoals = await window.petodo.saveCountdownGoals(legacyGoals);
+      state.countdownList = Array.isArray(migratedGoals) ? migratedGoals : legacyGoals;
+    } else {
+      state.countdownList = normalizedSavedGoals;
+    }
+  } catch (error) {
+    console.warn('Failed to load countdown goals from desktop storage:', error);
+    state.countdownList = legacyGoals;
+  }
+
+  localStorage.setItem(COUNTDOWN_STORAGE_KEY, JSON.stringify(state.countdownList));
+  return state.countdownList;
+}
+
+async function saveCountdownState() {
+  localStorage.setItem(COUNTDOWN_STORAGE_KEY, JSON.stringify(state.countdownList));
+
+  if (!window.petodo?.saveCountdownGoals) {
+    return state.countdownList;
+  }
+
+  try {
+    const savedGoals = await window.petodo.saveCountdownGoals(state.countdownList);
+    state.countdownList = Array.isArray(savedGoals) ? savedGoals : state.countdownList;
+    localStorage.setItem(COUNTDOWN_STORAGE_KEY, JSON.stringify(state.countdownList));
+  } catch (error) {
+    console.warn('Failed to save countdown goals to desktop storage:', error);
+  }
+
+  return state.countdownList;
 }
 
 function saveDailyTaskEasterEggSetting() {
@@ -203,6 +354,10 @@ function saveDailyTaskEasterEggSetting() {
 
 function createTaskId() {
   return `task-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function createCountdownId() {
+  return `countdown-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function getCurrentTask() {
@@ -345,6 +500,35 @@ function showDailyTaskEasterEggDialog() {
   dailyTaskEasterEggImage.src = `assets/pet/luoxiaohei/gif/task-complete-fish.webp?restart=${Date.now()}`;
   void dailyTaskEasterEggDialog.offsetWidth;
   dailyTaskEasterEggDialog.classList.add('is-visible');
+}
+
+function resetCountdownForm() {
+  countdownForm.reset();
+}
+
+function hideCountdownModal() {
+  if (!countdownModal) {
+    return;
+  }
+
+  countdownModal.classList.remove('is-visible');
+  window.clearTimeout(hideCountdownModal.hideTimer);
+  hideCountdownModal.hideTimer = window.setTimeout(() => {
+    countdownModal.hidden = true;
+  }, 180);
+}
+
+function showCountdownModal() {
+  if (!countdownModal) {
+    return;
+  }
+
+  window.clearTimeout(hideCountdownModal.hideTimer);
+  countdownModal.hidden = false;
+  countdownModal.classList.remove('is-visible');
+  void countdownModal.offsetWidth;
+  countdownModal.classList.add('is-visible');
+  countdownNameInput.focus();
 }
 
 function getCompletedFocusKey(timerStatus = {}) {
@@ -651,6 +835,48 @@ function getTodayKey() {
   return toDateKey(new Date());
 }
 
+function getDateKeyTimestamp(dateKey) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  return Date.UTC(year, month - 1, day);
+}
+
+function getCountdownStatus(targetDate) {
+  const todayKey = getTodayKey();
+
+  if (targetDate === todayKey) {
+    return {
+      text: '就是今天，加油！',
+      tone: 'today',
+      metricLabel: '就是',
+      metricValue: '今天',
+      metricSuffix: '',
+      isCompleted: false
+    };
+  }
+
+  if (targetDate < todayKey) {
+    const elapsedDays = Math.round((getDateKeyTimestamp(todayKey) - getDateKeyTimestamp(targetDate)) / MS_PER_DAY);
+    return {
+      text: `已过去 ${elapsedDays} 天`,
+      tone: 'completed',
+      metricLabel: '已过去',
+      metricValue: String(elapsedDays),
+      metricSuffix: '天',
+      isCompleted: true
+    };
+  }
+
+  const remainingDays = Math.round((getDateKeyTimestamp(targetDate) - getDateKeyTimestamp(todayKey)) / MS_PER_DAY);
+  return {
+    text: `还有 ${remainingDays} 天`,
+    tone: 'upcoming',
+    metricLabel: '还有',
+    metricValue: String(remainingDays),
+    metricSuffix: '天',
+    isCompleted: false
+  };
+}
+
 function getTodoRolloverCounts() {
   const unfinished = state.todoList.filter((task) => !task.completed).length;
 
@@ -947,10 +1173,54 @@ function renderTodoView() {
   renderTodoList();
 }
 
+function renderCountdownList() {
+  countdownListElement.innerHTML = '';
+  countdownEmptyState.hidden = state.countdownList.length > 0;
+  document.querySelector('#countdownListSummary').textContent = `${state.countdownList.length} 个目标`;
+
+  state.countdownList.forEach((goal) => {
+    const status = getCountdownStatus(goal.targetDate);
+    const item = document.createElement('article');
+    item.className = `countdown-item is-${status.tone}`;
+    item.dataset.countdownId = goal.id;
+    const titleText = status.isCompleted
+      ? `${escapeHtml(goal.name)}（已完成）`
+      : escapeHtml(goal.name);
+
+    item.innerHTML = `
+      <div class="countdown-main">
+        <h2 class="countdown-title${status.isCompleted ? ' is-completed' : ''}">${titleText}</h2>
+        <p class="countdown-note">${goal.note ? escapeHtml(goal.note) : '暂无备注'}</p>
+      </div>
+      <div class="countdown-side">
+        <div class="countdown-status-block is-${status.tone}">
+          <span class="countdown-status-label">${status.metricLabel}</span>
+          <div class="countdown-status-value-row">
+            <strong class="countdown-status-value">${status.metricValue}</strong>
+            ${status.metricSuffix ? `<span class="countdown-status-suffix">${status.metricSuffix}</span>` : ''}
+          </div>
+        </div>
+        <p class="countdown-date">${goal.targetDate}</p>
+        <p class="countdown-status-text is-${status.tone}">${status.text}</p>
+      </div>
+      <div class="countdown-item-footer">
+        <button class="btn btn-ghost countdown-delete-button" type="button">删除</button>
+      </div>
+    `;
+
+    countdownListElement.appendChild(item);
+  });
+}
+
+function renderCountdownView() {
+  renderCountdownList();
+}
+
 function render() {
   updateTimerView();
   updateCompanionView();
   renderTodoView();
+  renderCountdownView();
   renderJournalView();
 }
 
@@ -1061,6 +1331,56 @@ function handleTodoListChange(event) {
   }
 
   toggleTodoComplete(item.dataset.taskId, event.target.checked);
+}
+
+async function addCountdownGoal(event) {
+  event.preventDefault();
+
+  const name = countdownNameInput.value.trim();
+  const targetDate = countdownDateInput.value;
+  const note = countdownNoteInput.value.trim();
+
+  if (!name) {
+    showToast('请先输入目标名称');
+    countdownNameInput.focus();
+    return;
+  }
+
+  if (!isValidDateKey(targetDate)) {
+    showToast('请先选择目标日期');
+    countdownDateInput.focus();
+    return;
+  }
+
+  state.countdownList.unshift({
+    id: createCountdownId(),
+    name,
+    targetDate,
+    note
+  });
+
+  countdownNameInput.value = '';
+  resetCountdownForm();
+  await saveCountdownState();
+  renderCountdownView();
+  hideCountdownModal();
+  showToast('已添加倒计时目标');
+}
+
+async function deleteCountdownGoal(countdownId) {
+  state.countdownList = state.countdownList.filter((goal) => goal.id !== countdownId);
+  await saveCountdownState();
+  renderCountdownView();
+  showToast('已删除倒计时目标');
+}
+
+function handleCountdownListClick(event) {
+  const item = event.target.closest('.countdown-item');
+  if (!item || !event.target.matches('.countdown-delete-button')) {
+    return;
+  }
+
+  deleteCountdownGoal(item.dataset.countdownId);
 }
 
 function stopTimer() {
@@ -1214,9 +1534,34 @@ async function closePetWindow() {
   showPetStatus(status);
 }
 
-if (state.currentTaskId && !getCurrentTask()) {
-  state.currentTaskId = '';
-  saveTodoState();
+async function openCountdownWidget() {
+  if (!window.petodo?.openCountdownWidget) {
+    showToast('当前环境无法打开桌面小组件');
+    return;
+  }
+
+  try {
+    await window.petodo.openCountdownWidget();
+    showToast('桌面小组件已打开');
+  } catch (error) {
+    console.warn('Failed to open countdown widget:', error);
+    showToast('桌面小组件打开失败');
+  }
+}
+
+async function openTodoWidget() {
+  if (!window.petodo?.openTodoWidget) {
+    showToast('当前环境无法打开今日待办小组件');
+    return;
+  }
+
+  try {
+    await window.petodo.openTodoWidget();
+    showToast('今日待办小组件已打开');
+  } catch (error) {
+    console.warn('Failed to open todo widget:', error);
+    showToast('今日待办小组件打开失败');
+  }
 }
 
 navItems.forEach((item) => {
@@ -1242,6 +1587,19 @@ document.querySelectorAll('.redeem-button').forEach((button) => {
 todoForm.addEventListener('submit', addTodo);
 todoListElement.addEventListener('click', handleTodoListClick);
 todoListElement.addEventListener('change', handleTodoListChange);
+countdownForm.addEventListener('submit', addCountdownGoal);
+countdownListElement.addEventListener('click', handleCountdownListClick);
+countdownAddButton?.addEventListener('click', showCountdownModal);
+countdownWidgetButton?.addEventListener('click', openCountdownWidget);
+todoWidgetButton?.addEventListener('click', openTodoWidget);
+countdownModalCancelButton?.addEventListener('click', () => {
+  resetCountdownForm();
+  hideCountdownModal();
+});
+countdownModalBackdrop?.addEventListener('click', () => {
+  resetCountdownForm();
+  hideCountdownModal();
+});
 document.querySelector('#feedButton').addEventListener('click', feedPet);
 openShopButton.addEventListener('click', () => setPage('shop'));
 document.querySelector('#openPetButton').addEventListener('click', openPetWindow);
@@ -1254,14 +1612,55 @@ dailyTaskEasterEggToggle?.addEventListener('change', () => {
   state.dailyTaskEasterEggEnabled = dailyTaskEasterEggToggle.checked;
   saveDailyTaskEasterEggSetting();
 });
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && countdownModal && !countdownModal.hidden) {
+    resetCountdownForm();
+    hideCountdownModal();
+  }
+});
 
 if (dailyTaskEasterEggToggle) {
   dailyTaskEasterEggToggle.checked = state.dailyTaskEasterEggEnabled;
 }
 
-render();
-refreshAppStatus().finally(checkTodoRollover);
-refreshPetStatus();
-appStatusPollTimer = window.setInterval(refreshAppStatus, 2000);
-dailyTodoCheckTimer = window.setInterval(checkTodoRollover, DAILY_TODO_CHECK_MS);
-window.setInterval(refreshPetStatus, 2000);
+window.petodo?.onNavigateToPage?.((pageName) => {
+  if (typeof pageName === 'string') {
+    setPage(pageName);
+    if (pageName === 'todo') {
+      loadTodoState().then(() => {
+        renderTodoView();
+        updateTimerView();
+      }).catch((error) => {
+        console.warn('Failed to refresh todo state after navigation:', error);
+      });
+    }
+  }
+});
+
+async function initializeApp() {
+  await loadTodoState();
+  if (state.currentTaskId && !getCurrentTask()) {
+    state.currentTaskId = '';
+    saveTodoState();
+  }
+
+  render();
+
+  try {
+    await loadCountdownState();
+    renderCountdownView();
+  } catch (error) {
+    console.warn('Failed to initialize countdown state:', error);
+  }
+
+  refreshAppStatus().finally(checkTodoRollover);
+  refreshPetStatus();
+  appStatusPollTimer = window.setInterval(refreshAppStatus, 2000);
+  dailyTodoCheckTimer = window.setInterval(checkTodoRollover, DAILY_TODO_CHECK_MS);
+  window.setInterval(refreshPetStatus, 2000);
+}
+
+initializeApp().catch((error) => {
+  console.warn('Failed to initialize app:', error);
+  render();
+});

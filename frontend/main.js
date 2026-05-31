@@ -1,9 +1,13 @@
-const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, Tray } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
 let mainWindow = null;
 let petWindow = null;
+let countdownWidgetWindow = null;
+let todoWidgetWindow = null;
+let tray = null;
+let isQuitting = false;
 let petWindowBounds = null;
 let petWindowPanelOpen = false;
 let petWindowSettings = {
@@ -32,6 +36,120 @@ const PET_PANEL_LAYOUT = {
 
 function getWindowStatePath() {
   return path.join(app.getPath('userData'), 'pet-window-state.json');
+}
+
+function getCountdownStoragePath() {
+  return path.join(app.getPath('userData'), 'countdown-goals.json');
+}
+
+function getTodoStoragePath() {
+  return path.join(app.getPath('userData'), 'todo-state.json');
+}
+
+function createId(prefix) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function isValidDateKey(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day;
+}
+
+function normalizeTodoList(tasks = []) {
+  if (!Array.isArray(tasks)) {
+    return [];
+  }
+
+  return tasks
+    .filter((task) => task && typeof task.name === 'string')
+    .map((task) => ({
+      id: String(task.id || createId('task')),
+      name: task.name.trim(),
+      type: typeof task.type === 'string' && task.type.trim() ? task.type : '学习',
+      estimatedPomodoros: Number(task.estimatedPomodoros) || 1,
+      completedPomodoros: Number(task.completedPomodoros) || 0,
+      completedFocusRecordKeys: Array.isArray(task.completedFocusRecordKeys)
+        ? task.completedFocusRecordKeys.map(String)
+        : [],
+      completed: Boolean(task.completed)
+    }))
+    .filter((task) => task.name);
+}
+
+function normalizeTodoState(todoState = {}) {
+  const todoList = normalizeTodoList(todoState.todoList);
+  const currentTaskId = typeof todoState.currentTaskId === 'string'
+    && todoList.some((task) => task.id === todoState.currentTaskId && !task.completed)
+    ? todoState.currentTaskId
+    : '';
+  const todoListDate = isValidDateKey(todoState.todoListDate) ? todoState.todoListDate : '';
+
+  return {
+    todoList,
+    currentTaskId,
+    todoListDate
+  };
+}
+
+function loadTodoStateFromDisk() {
+  try {
+    const raw = fs.readFileSync(getTodoStoragePath(), 'utf8');
+    return normalizeTodoState(JSON.parse(raw));
+  } catch {
+    return normalizeTodoState();
+  }
+}
+
+function saveTodoStateToDisk(todoState = {}) {
+  const normalizedState = normalizeTodoState(todoState);
+  fs.writeFileSync(
+    getTodoStoragePath(),
+    JSON.stringify(normalizedState, null, 2),
+    'utf8'
+  );
+  return normalizedState;
+}
+
+function normalizeCountdownGoals(goals = []) {
+  if (!Array.isArray(goals)) {
+    return [];
+  }
+
+  return goals
+    .filter((goal) => goal && typeof goal.name === 'string' && isValidDateKey(goal.targetDate))
+    .map((goal) => ({
+      id: String(goal.id || `countdown-${Date.now()}-${Math.random().toString(16).slice(2)}`),
+      name: goal.name.trim(),
+      targetDate: goal.targetDate,
+      note: typeof goal.note === 'string' ? goal.note.trim() : ''
+    }))
+    .filter((goal) => goal.name);
+}
+
+function loadCountdownGoalsFromDisk() {
+  try {
+    const raw = fs.readFileSync(getCountdownStoragePath(), 'utf8');
+    return normalizeCountdownGoals(JSON.parse(raw));
+  } catch {
+    return [];
+  }
+}
+
+function saveCountdownGoalsToDisk(goals = []) {
+  const normalizedGoals = normalizeCountdownGoals(goals);
+  fs.writeFileSync(
+    getCountdownStoragePath(),
+    JSON.stringify(normalizedGoals, null, 2),
+    'utf8'
+  );
+  return normalizedGoals;
 }
 
 function clampPetScalePercent(scalePercent) {
@@ -305,6 +423,94 @@ function setPetWindowAlwaysOnTop(enabled) {
   return getPetWindowStatus();
 }
 
+function updateTrayMenu() {
+  if (!tray) {
+    return;
+  }
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: '打开主窗口',
+      click: () => showMainWindow()
+    },
+    { type: 'separator' },
+    {
+      label: '打开今日待办小组件',
+      click: () => createTodoWidgetWindow()
+    },
+    {
+      label: '关闭今日待办小组件',
+      enabled: Boolean(todoWidgetWindow && !todoWidgetWindow.isDestroyed()),
+      click: () => closeTodoWidgetWindow()
+    },
+    { type: 'separator' },
+    {
+      label: '打开未来倒计时小组件',
+      click: () => createCountdownWidgetWindow()
+    },
+    {
+      label: '关闭未来倒计时小组件',
+      enabled: Boolean(countdownWidgetWindow && !countdownWidgetWindow.isDestroyed()),
+      click: () => closeCountdownWidgetWindow()
+    },
+    { type: 'separator' },
+    {
+      label: '退出 Petodo',
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+
+  tray.setContextMenu(contextMenu);
+}
+
+function createTray() {
+  if (tray) {
+    return tray;
+  }
+
+  const iconPath = path.join(__dirname, 'assets', 'pet', 'luoxiaohei', 'happy', 'happy_01.png');
+  const trayIcon = fs.existsSync(iconPath)
+    ? nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 })
+    : nativeImage.createEmpty();
+
+  tray = new Tray(trayIcon);
+  tray.setToolTip('Petodo');
+  tray.on('click', () => showMainWindow());
+  updateTrayMenu();
+  return tray;
+}
+
+function showMainWindow(pageName) {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createMainWindow();
+  }
+
+  mainWindow.show();
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+  mainWindow.focus();
+
+  if (pageName) {
+    const sendNavigation = () => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('navigation:set-page', pageName);
+      }
+    };
+
+    if (mainWindow.webContents.isLoading()) {
+      mainWindow.webContents.once('did-finish-load', sendNavigation);
+    } else {
+      sendNavigation();
+    }
+  }
+
+  return true;
+}
+
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -321,11 +527,18 @@ function createMainWindow() {
 
   mainWindow.loadFile('index.html');
 
+  mainWindow.on('close', (event) => {
+    if (isQuitting) {
+      return;
+    }
+
+    event.preventDefault();
+    mainWindow.hide();
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
-    if (petWindow && !petWindow.isDestroyed()) {
-      petWindow.close();
-    }
+    updateTrayMenu();
   });
 }
 
@@ -374,6 +587,7 @@ function createPetWindow() {
 
   petWindow.on('closed', () => {
     petWindow = null;
+    updateTrayMenu();
   });
 
   petWindow.on('close', () => {
@@ -381,6 +595,104 @@ function createPetWindow() {
   });
 
   return petWindow;
+}
+
+function createCountdownWidgetWindow() {
+  if (countdownWidgetWindow && !countdownWidgetWindow.isDestroyed()) {
+    countdownWidgetWindow.show();
+    countdownWidgetWindow.focus();
+    countdownWidgetWindow.moveTop();
+    return countdownWidgetWindow;
+  }
+
+  countdownWidgetWindow = new BrowserWindow({
+    width: 260,
+    height: 180,
+    minWidth: 260,
+    minHeight: 180,
+    maxWidth: 320,
+    maxHeight: 240,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    backgroundColor: '#00000000',
+    title: 'Petodo 倒计时小组件',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  countdownWidgetWindow.loadFile('countdown_widget.html');
+  countdownWidgetWindow.setMenuBarVisibility(false);
+  countdownWidgetWindow.setAlwaysOnTop(true, 'screen-saver');
+  countdownWidgetWindow.moveTop();
+
+  countdownWidgetWindow.on('closed', () => {
+    countdownWidgetWindow = null;
+    updateTrayMenu();
+  });
+
+  updateTrayMenu();
+  return countdownWidgetWindow;
+}
+
+function closeCountdownWidgetWindow() {
+  if (countdownWidgetWindow && !countdownWidgetWindow.isDestroyed()) {
+    countdownWidgetWindow.close();
+  }
+}
+
+function createTodoWidgetWindow() {
+  if (todoWidgetWindow && !todoWidgetWindow.isDestroyed()) {
+    todoWidgetWindow.show();
+    todoWidgetWindow.focus();
+    todoWidgetWindow.moveTop();
+    return todoWidgetWindow;
+  }
+
+  todoWidgetWindow = new BrowserWindow({
+    width: 280,
+    height: 320,
+    minWidth: 260,
+    minHeight: 280,
+    maxWidth: 340,
+    maxHeight: 420,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    backgroundColor: '#00000000',
+    title: '今日待办小组件',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  todoWidgetWindow.loadFile('todo_widget.html');
+  todoWidgetWindow.setMenuBarVisibility(false);
+  todoWidgetWindow.setAlwaysOnTop(true, 'screen-saver');
+  todoWidgetWindow.moveTop();
+
+  todoWidgetWindow.on('closed', () => {
+    todoWidgetWindow = null;
+    updateTrayMenu();
+  });
+
+  updateTrayMenu();
+  return todoWidgetWindow;
+}
+
+function closeTodoWidgetWindow() {
+  if (todoWidgetWindow && !todoWidgetWindow.isDestroyed()) {
+    todoWidgetWindow.close();
+  }
 }
 
 function playPetWindowOpeningAnimation() {
@@ -433,16 +745,10 @@ ipcMain.handle('pet-window:set-scale', (_event, scalePercent, options = {}) => s
 
 ipcMain.handle('pet-window:set-always-on-top', (_event, enabled) => setPetWindowAlwaysOnTop(enabled));
 
-ipcMain.handle('main-window:show', () => {
-  if (!mainWindow || mainWindow.isDestroyed()) {
-    createMainWindow();
-  }
-  mainWindow.show();
-  mainWindow.focus();
-  return true;
-});
+ipcMain.handle('main-window:show', (_event, pageName) => showMainWindow(pageName));
 
 ipcMain.handle('app:quit', () => {
+  isQuitting = true;
   app.quit();
   return true;
 });
@@ -452,8 +758,41 @@ ipcMain.handle('pet-window:save-position', () => {
   return getPetWindowBounds();
 });
 
+ipcMain.handle('countdown-widget:open', () => {
+  createCountdownWidgetWindow();
+  return true;
+});
+
+ipcMain.handle('countdown-widget:close', () => {
+  closeCountdownWidgetWindow();
+  return true;
+});
+
+ipcMain.handle('todo-widget:open', () => {
+  createTodoWidgetWindow();
+  return true;
+});
+
+ipcMain.handle('todo-widget:close', () => {
+  closeTodoWidgetWindow();
+  return true;
+});
+
+ipcMain.handle('countdown-storage:load', () => loadCountdownGoalsFromDisk());
+
+ipcMain.handle('countdown-storage:save', (_event, goals = []) => {
+  return saveCountdownGoalsToDisk(goals);
+});
+
+ipcMain.handle('todo-storage:load', () => loadTodoStateFromDisk());
+
+ipcMain.handle('todo-storage:save', (_event, todoState = {}) => {
+  return saveTodoStateToDisk(todoState);
+});
+
 app.whenReady().then(() => {
   loadPetWindowBounds();
+  createTray();
   createMainWindow();
   createPetWindow();
 
@@ -465,7 +804,7 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  if (process.platform !== 'darwin' && isQuitting) {
     app.quit();
   }
 });

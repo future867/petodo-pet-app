@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Petodo Countdown Widget</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    :root {
+      color-scheme: light;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+      background: transparent;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      padding: 10px;
+      overflow: hidden;
+    }
+
+    .widget-shell {
+      width: 100%;
+      min-height: 160px;
+      padding: 12px;
+      border: 1px solid rgba(222, 220, 209, 0.92);
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.96), rgba(255, 250, 244, 0.92)),
+        rgba(255, 254, 250, 0.92);
+      box-shadow: 0 18px 40px rgba(20, 20, 19, 0.14);
+      backdrop-filter: blur(14px);
+      -webkit-app-region: drag;
+    }
+
+    .widget-toolbar,
+    .widget-actions,
+    .widget-body {
+      -webkit-app-region: no-drag;
+    }
+
+    .widget-toolbar,
+    .widget-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .widget-toolbar {
+      margin-bottom: 12px;
+    }
+
+    .widget-kicker {
+      margin: 0;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .widget-close {
+      display: inline-grid;
+      width: 28px;
+      height: 28px;
+      place-items: center;
+      border: 1px solid rgba(222, 220, 209, 0.92);
+      border-radius: 999px;
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.75);
+      cursor: pointer;
+    }
+
+    .widget-body {
+      display: grid;
+      gap: 8px;
+      min-height: 86px;
+    }
+
+    .widget-title,
+    .widget-date,
+    .widget-status,
+    .widget-empty {
+      margin: 0;
+    }
+
+    .widget-title {
+      font-size: 20px;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .widget-date {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .widget-status {
+      color: var(--accent);
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .widget-status.is-today {
+      color: #3b6c48;
+    }
+
+    .widget-status.is-completed {
+      color: #6a6962;
+    }
+
+    .widget-empty {
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .widget-actions {
+      margin-top: 10px;
+    }
+
+    .widget-refresh {
+      min-height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <main class="widget-shell" aria-label="未来倒计时桌面小组件">
+    <div class="widget-toolbar">
+      <p class="widget-kicker">Future Countdown</p>
+      <button class="widget-close" id="widgetCloseButton" type="button" aria-label="关闭小组件">×</button>
+    </div>
+
+    <section class="widget-body">
+      <h1 class="widget-title" id="widgetTitle">未来倒计时</h1>
+      <p class="widget-date" id="widgetDate">--</p>
+      <p class="widget-status" id="widgetStatus">还没有未来目标</p>
+      <p class="widget-empty" id="widgetEmptyText" hidden>去主页面添加一个目标，再回来看看。</p>
+    </section>
+
+    <div class="widget-actions">
+      <button class="btn btn-secondary widget-refresh" id="widgetRefreshButton" type="button">刷新</button>
+    </div>
+  </main>
+
+  <script src="countdown_widget.js"></script>
+</body>
+</html>
