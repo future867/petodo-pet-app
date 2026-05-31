@@ -797,9 +797,7 @@ app.whenReady().then(() => {
   createPetWindow();
 
   app.on('activate', () => {
-    if (!mainWindow) {
-      createMainWindow();
-    }
+    showMainWindow();
   });
 });
 
