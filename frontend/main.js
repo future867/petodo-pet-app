@@ -33,6 +33,10 @@ const PET_PANEL_LAYOUT = {
   gap: 8,
   panelWidth: 228
 };
+const COUNTDOWN_WIDGET_SIZE = { width: 300, height: 260 };
+const COUNTDOWN_WIDGET_MARGIN = 18;
+const TODO_WIDGET_SIZE = { width: 280, height: 320 };
+const TODO_WIDGET_MARGIN = 18;
 
 function getWindowStatePath() {
   return path.join(app.getPath('userData'), 'pet-window-state.json');
@@ -599,25 +603,20 @@ function createPetWindow() {
 
 function createCountdownWidgetWindow() {
   if (countdownWidgetWindow && !countdownWidgetWindow.isDestroyed()) {
-    countdownWidgetWindow.show();
-    countdownWidgetWindow.focus();
-    countdownWidgetWindow.moveTop();
+    showCountdownWidgetWithoutFocus();
     return countdownWidgetWindow;
   }
 
+  const widgetBounds = getCountdownWidgetBounds();
   countdownWidgetWindow = new BrowserWindow({
-    width: 300,
-    height: 260,
-    minWidth: 300,
-    minHeight: 260,
-    maxWidth: 340,
-    maxHeight: 300,
+    ...widgetBounds,
     frame: false,
     transparent: true,
     resizable: false,
-    alwaysOnTop: true,
     skipTaskbar: true,
     hasShadow: false,
+    focusable: true,
+    show: false,
     backgroundColor: '#00000000',
     title: 'Petodo 倒计时小组件',
     webPreferences: {
@@ -629,8 +628,9 @@ function createCountdownWidgetWindow() {
 
   countdownWidgetWindow.loadFile('countdown_widget.html');
   countdownWidgetWindow.setMenuBarVisibility(false);
-  countdownWidgetWindow.setAlwaysOnTop(true, 'screen-saver');
-  countdownWidgetWindow.moveTop();
+  countdownWidgetWindow.once('ready-to-show', () => {
+    showCountdownWidgetWithoutFocus();
+  });
 
   countdownWidgetWindow.on('closed', () => {
     countdownWidgetWindow = null;
@@ -641,32 +641,77 @@ function createCountdownWidgetWindow() {
   return countdownWidgetWindow;
 }
 
+function getCountdownWidgetBounds() {
+  const { workArea } = screen.getPrimaryDisplay();
+  return {
+    x: workArea.x + workArea.width - COUNTDOWN_WIDGET_SIZE.width - COUNTDOWN_WIDGET_MARGIN,
+    y: workArea.y + COUNTDOWN_WIDGET_MARGIN,
+    width: COUNTDOWN_WIDGET_SIZE.width,
+    height: COUNTDOWN_WIDGET_SIZE.height
+  };
+}
+
+function showCountdownWidgetWithoutFocus() {
+  if (!countdownWidgetWindow || countdownWidgetWindow.isDestroyed()) {
+    return;
+  }
+
+  countdownWidgetWindow.setBounds(getCountdownWidgetBounds(), false);
+
+  if (typeof countdownWidgetWindow.showInactive === 'function') {
+    countdownWidgetWindow.showInactive();
+    return;
+  }
+
+  countdownWidgetWindow.show();
+}
+
 function closeCountdownWidgetWindow() {
   if (countdownWidgetWindow && !countdownWidgetWindow.isDestroyed()) {
     countdownWidgetWindow.close();
   }
 }
 
+function getTodoWidgetBounds() {
+  const { workArea } = screen.getPrimaryDisplay();
+  return {
+    x: workArea.x + workArea.width - TODO_WIDGET_SIZE.width - TODO_WIDGET_MARGIN,
+    y: workArea.y + TODO_WIDGET_MARGIN,
+    width: TODO_WIDGET_SIZE.width,
+    height: TODO_WIDGET_SIZE.height
+  };
+}
+
+function showTodoWidgetWithoutFocus() {
+  if (!todoWidgetWindow || todoWidgetWindow.isDestroyed()) {
+    return;
+  }
+
+  todoWidgetWindow.setBounds(getTodoWidgetBounds(), false);
+
+  if (typeof todoWidgetWindow.showInactive === 'function') {
+    todoWidgetWindow.showInactive();
+    return;
+  }
+
+  todoWidgetWindow.show();
+}
+
 function createTodoWidgetWindow() {
   if (todoWidgetWindow && !todoWidgetWindow.isDestroyed()) {
-    todoWidgetWindow.show();
-    todoWidgetWindow.focus();
-    todoWidgetWindow.moveTop();
+    showTodoWidgetWithoutFocus();
     return todoWidgetWindow;
   }
 
+  const widgetBounds = getTodoWidgetBounds();
   todoWidgetWindow = new BrowserWindow({
-    width: 280,
-    height: 320,
-    minWidth: 260,
-    minHeight: 280,
-    maxWidth: 340,
-    maxHeight: 420,
+    ...widgetBounds,
     frame: false,
     transparent: true,
     resizable: false,
-    alwaysOnTop: true,
     skipTaskbar: true,
+    focusable: true,
+    show: false,
     backgroundColor: '#00000000',
     title: '今日待办小组件',
     webPreferences: {
@@ -678,8 +723,9 @@ function createTodoWidgetWindow() {
 
   todoWidgetWindow.loadFile('todo_widget.html');
   todoWidgetWindow.setMenuBarVisibility(false);
-  todoWidgetWindow.setAlwaysOnTop(true, 'screen-saver');
-  todoWidgetWindow.moveTop();
+  todoWidgetWindow.once('ready-to-show', () => {
+    showTodoWidgetWithoutFocus();
+  });
 
   todoWidgetWindow.on('closed', () => {
     todoWidgetWindow = null;

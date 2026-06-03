@@ -122,6 +122,45 @@ def test_break_countdown_is_anchored_to_focus_end_time():
     assert finished.remaining_seconds == 0
 
 
+def test_every_fourth_focus_uses_long_break():
+    clock = FakeClock()
+    timer = PomodoroTimer(
+        focus_seconds=10,
+        break_seconds=5,
+        long_break_seconds=15,
+        long_break_interval=4,
+        time_provider=clock.now,
+    )
+
+    for cycle in range(1, 4):
+        timer.start()
+        clock.advance(10.2)
+        status = timer.status()
+        assert status.mode == "break"
+        assert status.break_type == "short"
+        assert status.break_seconds == 5
+        assert status.long_break_seconds == 15
+        assert status.long_break_interval == 4
+        assert status.last_completed_focus_id == cycle
+        clock.advance(status.remaining_seconds + 0.1)
+        assert timer.status().mode == "idle"
+
+    timer.start()
+    clock.advance(10.2)
+    long_break = timer.status()
+    assert long_break.mode == "break"
+    assert long_break.break_type == "long"
+    assert long_break.break_seconds == 15
+    assert long_break.last_completed_focus_id == 4
+
+    clock.advance(5.1)
+    after_five_minutes = timer.status()
+    assert after_five_minutes.mode == "break"
+    assert after_five_minutes.break_type == "long"
+    assert after_five_minutes.break_elapsed_seconds >= 5
+    assert after_five_minutes.remaining_seconds <= 10
+
+
 def test_focus_records_do_not_skip_after_restart_with_same_focus_id():
     first_clock = FakeClock()
     first_timer = PomodoroTimer(focus_seconds=10, break_seconds=5, time_provider=first_clock.now)
@@ -434,8 +473,8 @@ def test_shop_redeem_uses_pizza_and_chicken_leg_tiers(monkeypatch):
         ).model_dump()
         for index in range(1, 6)
     ]
-    test_records.data["last_recorded_focus_id"] = 5
-    test_records.data["last_recorded_focus_completed_at"] = base_record.completed_at + 5
+    test_records.data["last_recorded_focus_id"] = test_timer.status().last_completed_focus_id
+    test_records.data["last_recorded_focus_completed_at"] = test_timer.status().last_completed_focus_completed_at
     test_shop = ShopLedger(time_provider=clock.now, storage_enabled=False)
     test_fishing = FishingLedger(time_provider=clock.now, storage_enabled=False)
 

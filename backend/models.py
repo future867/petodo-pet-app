@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 TimerMode = Literal["idle", "focus", "break", "paused"]
 PreviousMode = Literal["focus", "break"]
+BreakType = Literal["short", "long"]
 PetState = Literal[
     "idle",
     "focus",
@@ -32,6 +33,11 @@ class TimerStatus(BaseModel):
     remaining_seconds: int
     focus_seconds: int
     break_seconds: int
+    short_break_seconds: int | None = None
+    long_break_seconds: int | None = None
+    long_break_interval: int | None = None
+    break_type: BreakType | None = None
+    break_elapsed_seconds: int = 0
     is_running: bool
     focus_cycle_id: int | None = None
     last_completed_focus_id: int | None = None

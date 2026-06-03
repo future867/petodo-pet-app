@@ -25,6 +25,30 @@
       "loop": true,
       "fallbackTo": "idle_1"
     },
+    "rest_1": {
+      "type": "image",
+      "path": "gif/luoxiaohei-rest.gif",
+      "loop": true,
+      "fallbackTo": "idle_1"
+    },
+    "rest_2": {
+      "type": "image",
+      "path": "gif/luoxiaohei-rest-2.gif",
+      "loop": true,
+      "fallbackTo": "rest_1"
+    },
+    "rest_long_start": {
+      "type": "image",
+      "path": "gif/luoxiaohei-rest-long-start.gif",
+      "loop": true,
+      "fallbackTo": "rest_1"
+    },
+    "rest_long_after_5": {
+      "type": "image",
+      "path": "gif/luoxiaohei-rest-long-after-5.gif",
+      "loop": true,
+      "fallbackTo": "rest_long_start"
+    },
     "fishing": {
       "type": "image",
       "path": "gif/luoxiaohei-fishing.gif",
@@ -96,9 +120,9 @@
     },
     "tap": {
       "type": "image",
-      "path": "gif/luoxiaohei-tap.webp",
+      "path": "gif/luoxiaohei-angry-before-table.gif",
       "loop": false,
-      "duration": 650,
+      "duration": 2480,
       "fallbackTo": "idle_1"
     },
     "greet": {
@@ -156,6 +180,27 @@
       "path": "gif/luoxiaohei-stretch.gif",
       "loop": false,
       "duration": 5000,
+      "fallbackTo": "idle_1"
+    },
+    "playing_01": {
+      "type": "image",
+      "path": "gif/luoxiaohei-playing-01.gif",
+      "loop": false,
+      "duration": 2080,
+      "fallbackTo": "idle_1"
+    },
+    "playing_02": {
+      "type": "image",
+      "path": "gif/luoxiaohei-playing-02.gif",
+      "loop": false,
+      "duration": 2080,
+      "fallbackTo": "idle_1"
+    },
+    "playing_03": {
+      "type": "image",
+      "path": "gif/luoxiaohei-playing-03.gif",
+      "loop": false,
+      "duration": 960,
       "fallbackTo": "idle_1"
     }
   },

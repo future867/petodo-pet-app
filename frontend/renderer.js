@@ -11,6 +11,8 @@ const LOCAL_TIMER_TICK_MS = 250;
 const DAILY_TODO_CHECK_MS = 60 * 1000;
 const COMPLETION_DIALOG_AUTO_HIDE_MS = 5200;
 const DEFAULT_IDLE_STATE = 'idle_1';
+const SHORT_REST_SECOND_STAGE_SECONDS = 4 * 60;
+const LONG_REST_SECOND_STAGE_SECONDS = 5 * 60;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 const state = {
@@ -18,6 +20,8 @@ const state = {
   phase: 'Focus Session',
   remainingSeconds: FOCUS_SECONDS,
   timerMode: 'idle',
+  breakType: null,
+  breakElapsedSeconds: 0,
   timerSnapshotRemainingSeconds: FOCUS_SECONDS,
   timerSnapshotClientTime: Date.now(),
   isRunning: false,
@@ -46,6 +50,10 @@ const PET_MESSAGES = {
   idle_2: '小动物正在陪你',
   focus: '小动物正在陪你学习',
   rest: '小动物提醒你休息',
+  rest_1: '小动物提醒你休息',
+  rest_2: '小动物正在短休息',
+  rest_long_start: '长休息开始，小黑也在休息',
+  rest_long_after_5: '长休息进行中，小黑睡熟了',
   happy: '小动物很开心',
   fishing: '小动物正在钓鱼',
   hungry: '小动物有点饿了',
@@ -64,6 +72,10 @@ const PET_STATE_TEXT = {
   idle_2: '陪伴中',
   focus: '专注中',
   rest: '休息中',
+  rest_1: '休息中',
+  rest_2: '休息中',
+  rest_long_start: '长休息中',
+  rest_long_after_5: '长休息中',
   happy: '开心',
   fishing: '钓鱼中',
   hungry: '有点饿',
@@ -82,10 +94,14 @@ const PET_IMAGES = {
   idle_2: 'assets/pet/luoxiaohei/gif/luoxiaohei-idle.gif',
   focus: 'assets/pet/luoxiaohei/gif/luoxiaohei-focus.gif',
   rest: 'assets/pet/luoxiaohei/gif/luoxiaohei-rest.gif',
+  rest_1: 'assets/pet/luoxiaohei/gif/luoxiaohei-rest.gif',
+  rest_2: 'assets/pet/luoxiaohei/gif/luoxiaohei-rest-2.gif',
+  rest_long_start: 'assets/pet/luoxiaohei/gif/luoxiaohei-rest-long-start.gif',
+  rest_long_after_5: 'assets/pet/luoxiaohei/gif/luoxiaohei-rest-long-after-5.gif',
   happy: 'assets/pet/luoxiaohei/happy/happy_01.png',
   fishing: 'assets/pet/luoxiaohei/gif/luoxiaohei-fishing.gif',
   hungry: 'assets/pet/luoxiaohei/gif/luoxiaohei-hungry.webp',
-  hungry_heavy: 'assets/pet/luoxiaohei/gif/luoxiaohei-hungry-heavy.gif',
+  hungry_heavy: 'assets/pet/luoxiaohei/gif/luoxiaohei-hungry-heavy.webp',
   angry: 'assets/pet/luoxiaohei/gif/luoxiaohei-angry.gif',
   sleep: 'assets/pet/luoxiaohei/gif/luoxiaohei-sleep.gif',
   eating: 'assets/pet/luoxiaohei/gif/luoxiaohei-eating.gif',
@@ -628,9 +644,30 @@ function getHungerGuidance() {
   };
 }
 
+function resolveRestDisplayState() {
+  if (state.breakType === 'long') {
+    return state.breakElapsedSeconds >= LONG_REST_SECOND_STAGE_SECONDS
+      ? 'rest_long_after_5'
+      : 'rest_long_start';
+  }
+
+  return state.breakElapsedSeconds >= SHORT_REST_SECOND_STAGE_SECONDS
+    ? 'rest_2'
+    : 'rest_1';
+}
+
+function getDisplayPetState() {
+  if (state.petState === 'rest' && state.timerMode === 'break') {
+    return resolveRestDisplayState();
+  }
+
+  return state.petState;
+}
+
 function updateCompanionView() {
-  const message = state.petReason || PET_MESSAGES[state.petState] || PET_MESSAGES[DEFAULT_IDLE_STATE];
-  const petText = PET_STATE_TEXT[state.petState] || PET_STATE_TEXT[DEFAULT_IDLE_STATE];
+  const displayPetState = getDisplayPetState();
+  const message = state.petReason || PET_MESSAGES[displayPetState] || PET_MESSAGES[DEFAULT_IDLE_STATE];
+  const petText = PET_STATE_TEXT[displayPetState] || PET_STATE_TEXT[DEFAULT_IDLE_STATE];
   const guidance = getHungerGuidance();
 
   document.querySelector('#homeMessageText').textContent = message;
@@ -640,7 +677,7 @@ function updateCompanionView() {
   document.querySelector('#moodText').textContent = state.mood;
   document.querySelector('#pointsText').textContent = String(state.points);
   document.querySelector('#journalPointsText').textContent = String(state.points);
-  companionImage.src = PET_IMAGES[state.petState] || PET_IMAGES[DEFAULT_IDLE_STATE];
+  companionImage.src = PET_IMAGES[displayPetState] || PET_IMAGES[DEFAULT_IDLE_STATE];
   companionCard.dataset.hungerTone = guidance.tone;
   hungerGuidance.dataset.tone = guidance.tone;
   hungerGuidanceTitle.textContent = guidance.title;
@@ -713,7 +750,7 @@ function applyAppStatus(data = {}) {
   if (timerStatus.mode === 'focus') {
     state.phase = 'Focus Session';
   } else if (timerStatus.mode === 'break') {
-    state.phase = 'Break Time';
+    state.phase = timerStatus.break_type === 'long' ? 'Long Break' : 'Break Time';
   } else if (timerStatus.mode === 'paused') {
     state.phase = 'Paused';
   } else if (timerStatus.mode === 'idle') {
@@ -725,6 +762,17 @@ function applyAppStatus(data = {}) {
   }
 
   state.timerMode = timerStatus.mode || state.timerMode;
+  if (timerStatus.mode === 'break') {
+    state.breakType = timerStatus.break_type || null;
+    if (Number.isFinite(timerStatus.break_elapsed_seconds)) {
+      state.breakElapsedSeconds = Math.max(0, timerStatus.break_elapsed_seconds);
+    } else if (Number.isFinite(timerStatus.break_seconds) && Number.isFinite(timerStatus.remaining_seconds)) {
+      state.breakElapsedSeconds = Math.max(0, timerStatus.break_seconds - timerStatus.remaining_seconds);
+    }
+  } else if (timerStatus.mode && timerStatus.mode !== 'paused') {
+    state.breakType = null;
+    state.breakElapsedSeconds = 0;
+  }
   syncLocalTimerSnapshot(timerStatus);
   state.hasLoadedAppStatus = true;
   maybeShowPendingTodoRollover();

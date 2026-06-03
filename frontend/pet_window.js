@@ -1,11 +1,11 @@
 const EATING_DURATION_MS = 2200;
-const TAP_CLICK_WINDOW_MS = 700;
-const TAP_REQUIRED_CLICKS = 2;
+const IRRITATION_TRIGGER_GREETS = 3;
 const DRAG_CLICK_THRESHOLD_PX = 4;
 const FUN_ACTION_HOLD_MS = 4200;
 const GREET_ACTION_HOLD_MS = 1350;
 const RUN_ACTION_HOLD_MS = 2880;
 const SURF_ACTION_HOLD_MS = 4020;
+const PLAYING_ACTION_HOLD_MS = 2600;
 const STRETCH_ACTION_HOLD_MS = 4800;
 const TASK_COMPLETION_EASTER_EGG_MS = 3000;
 const LONG_IDLE_AFTER_MS = 2 * 60 * 1000;
@@ -14,6 +14,8 @@ const BAG_ACTION_RETURN_DELAY_MS = 500;
 const REST_INVITE_INTERVAL_MS = 60 * 1000;
 const REST_INVITE_HOLD_MS = 10 * 1000;
 const REST_END_WARNING_SECONDS = 60;
+const SHORT_REST_SECOND_STAGE_SECONDS = 4 * 60;
+const LONG_REST_SECOND_STAGE_SECONDS = 5 * 60;
 const FISHING_DURATION_MS = 4000;
 const FISHING_HAPPY_HOLD_MS = 1800;
 const FISHING_REWARD_POPUP_MS = 1700;
@@ -43,6 +45,7 @@ const DEFAULT_MENU_STATE = {
 const PET_THEMES = {
   luoxiaohei: 'assets/pet/luoxiaohei'
 };
+const PLAYING_STATES = ['playing_01', 'playing_02', 'playing_03'];
 const REST_INVITATIONS = [
   { message: '小黑想打个滚。', state: 'roll', holdMs: FUN_ACTION_HOLD_MS },
   { message: '小黑想伸个懒腰。', state: 'stretch', holdMs: STRETCH_ACTION_HOLD_MS },
@@ -50,7 +53,6 @@ const REST_INVITATIONS = [
   { message: '小黑想跑一跑。', state: 'run', holdMs: RUN_ACTION_HOLD_MS + BAG_ACTION_RETURN_DELAY_MS },
   { message: '小黑想去冲浪。', state: 'surf', holdMs: SURF_ACTION_HOLD_MS },
   { message: '小黑想锻炼一下。', state: 'exercise', holdMs: FUN_ACTION_HOLD_MS },
-  { message: '小黑想让你拍一拍。', state: 'tap', holdMs: FUN_ACTION_HOLD_MS },
   { message: '小黑想弹吉他。', state: 'guitar', holdMs: FUN_ACTION_HOLD_MS },
   { message: '小黑想磨磨爪子。', state: 'scratch', holdMs: FUN_ACTION_HOLD_MS }
 ];
@@ -91,8 +93,7 @@ let longIdleTimer = null;
 let manualTransitionTimer = null;
 let statusPollTimer = null;
 let lastCompletedFocusKey = null;
-let tapClickCount = 0;
-let tapClickTimer = null;
+let greetingClickCount = 0;
 let dragSession = null;
 let resizeSession = null;
 let suppressClickAfterDrag = false;
@@ -106,6 +107,9 @@ let forcedBubbleMessage = '';
 let forcedBubbleToken = 0;
 let lastTimerText = '25:00';
 let lastRemainingSeconds = null;
+let lastBreakType = null;
+let lastBreakElapsedSeconds = 0;
+let lastBreakSeconds = null;
 let lastRestInviteAt = 0;
 let lastRestInviteMessage = '';
 let lastRestInviteState = '';
@@ -149,6 +153,47 @@ function isRestTimerMode() {
 
 function isFocusTimerMode() {
   return lastTimerStatus === 'focus';
+}
+
+function rememberBreakStatus(timer = {}, remainingSeconds = null) {
+  const timerMode = timer.mode || lastTimerStatus;
+  const isBreakLike = timerMode === 'break' || timerMode === 'rest' || timer.previous_mode === 'break';
+
+  if (!isBreakLike) {
+    if (timerMode !== 'paused') {
+      lastBreakType = null;
+      lastBreakElapsedSeconds = 0;
+      lastBreakSeconds = null;
+    }
+    return;
+  }
+
+  lastBreakType = timer.break_type || timer.breakType || null;
+
+  if (Number.isFinite(timer.break_seconds)) {
+    lastBreakSeconds = Number(timer.break_seconds);
+  }
+
+  if (Number.isFinite(timer.break_elapsed_seconds)) {
+    lastBreakElapsedSeconds = Math.max(0, Number(timer.break_elapsed_seconds));
+    return;
+  }
+
+  if (Number.isFinite(lastBreakSeconds) && Number.isFinite(remainingSeconds)) {
+    lastBreakElapsedSeconds = Math.max(0, lastBreakSeconds - Number(remainingSeconds));
+  }
+}
+
+function resolveRestState() {
+  if (lastBreakType === 'long') {
+    return lastBreakElapsedSeconds >= LONG_REST_SECOND_STAGE_SECONDS
+      ? 'rest_long_after_5'
+      : 'rest_long_start';
+  }
+
+  return lastBreakElapsedSeconds >= SHORT_REST_SECOND_STAGE_SECONDS
+    ? 'rest_2'
+    : 'rest_1';
 }
 
 function pickRandomItem(items, previousValue = '') {
@@ -214,30 +259,31 @@ function resetLongIdleClock() {
   longIdleStartedAt = 0;
 }
 
-function resetTapClicks() {
-  tapClickCount = 0;
-  if (tapClickTimer) {
-    clearTimeout(tapClickTimer);
-    tapClickTimer = null;
-  }
+function resetGreetingClicks() {
+  greetingClickCount = 0;
 }
 
-async function queueSingleClickGreeting() {
-  if (tapClickTimer) {
-    clearTimeout(tapClickTimer);
+async function handleNormalPetSpriteClick() {
+  if (fishingInviteVisible || isFishingActive()) {
+    return;
   }
 
-  tapClickTimer = window.setTimeout(async () => {
-    tapClickTimer = null;
-    const shouldGreet = tapClickCount > 0;
-    resetTapClicks();
-    if (!shouldGreet || isDraggingPet) {
-      return;
-    }
-
+  if (greetingClickCount >= IRRITATION_TRIGGER_GREETS) {
+    resetGreetingClicks();
     await setToolPanelOpen(false);
-    await playTemporaryState('greet', GREET_ACTION_HOLD_MS);
-  }, TAP_CLICK_WINDOW_MS);
+    await playTemporaryState('tap', FUN_ACTION_HOLD_MS, {
+      smoothReturn: true,
+      refreshRestInviteOnReturn: false
+    });
+    return;
+  }
+
+  greetingClickCount += 1;
+  await setToolPanelOpen(false);
+  await playTemporaryState('greet', GREET_ACTION_HOLD_MS + BAG_ACTION_RETURN_DELAY_MS, {
+    smoothReturn: true,
+    refreshRestInviteOnReturn: false
+  });
 }
 
 function showPetBubble(message, holdMs = 0) {
@@ -603,7 +649,7 @@ function resolveTimerBaseState() {
   }
 
   if (lastTimerStatus === 'break' || lastTimerStatus === 'rest') {
-    return 'rest';
+    return resolveRestState();
   }
 
   return DEFAULT_IDLE_STATE;
@@ -859,7 +905,10 @@ async function playTemporaryState(stateName, holdMs = FUN_ACTION_HOLD_MS, option
   manualHoldReturnTimer = window.setTimeout(async () => {
     manualHoldReturnTimer = null;
     manualVisualHoldUntil = 0;
-    const nextState = options.returnState || stateBeforeTemporary || resolveTimerBaseState();
+    const requestedReturnState = typeof options.returnState === 'function'
+      ? await options.returnState()
+      : options.returnState;
+    const nextState = requestedReturnState || stateBeforeTemporary || resolveTimerBaseState();
     const nextOptions = {
       rememberPrevious: false,
       force: true
@@ -1045,7 +1094,7 @@ async function settleFishing(sessionId) {
     }
 
     await playTemporaryState('happy', FISHING_HAPPY_HOLD_MS, {
-      returnState: 'rest',
+      returnState: resolveTimerBaseState,
       smoothReturn: true,
       preserveBubble: true,
       refreshRestInviteOnReturn: true
@@ -1196,10 +1245,10 @@ async function handleToolAction(action) {
     roll: () => playTemporaryState('roll'),
     surf: () => playTemporaryState('surf', SURF_ACTION_HOLD_MS),
     exercise: () => playTemporaryState('exercise'),
+    playing: () => playTemporaryState(pickRandomItem(PLAYING_STATES), PLAYING_ACTION_HOLD_MS),
     guitar: () => playTemporaryState('guitar'),
     scratch: () => playTemporaryState('scratch'),
     stretch: () => playTemporaryState('stretch', STRETCH_ACTION_HOLD_MS),
-    tap: () => playTemporaryState('tap'),
     'timer-toggle': toggleTimerFromPanel,
     'timer-reset': resetTimerFromPanel,
     pin: togglePinFromPanel,
@@ -1231,16 +1280,13 @@ async function playInvitedRestInteraction() {
   renderer?.hideBubble?.();
   await setToolPanelOpen(false);
   await playTemporaryState(invitation.state, invitation.holdMs, {
-    returnState: 'rest',
+    returnState: resolveTimerBaseState,
     smoothReturn: true,
     refreshRestInviteOnReturn: false
   });
 }
 
 async function handlePetClickByTimerMode() {
-  resetTapClicks();
-  await setToolPanelOpen(false);
-
   if (fishingInviteVisible || isFishingActive()) {
     return;
   }
@@ -1250,12 +1296,7 @@ async function handlePetClickByTimerMode() {
     return;
   }
 
-  if (lastTimerStatus === 'focus') {
-    showPetBubble(FOCUS_CLICK_MESSAGE, PET_CLICK_MESSAGE_HOLD_MS);
-    return;
-  }
-
-  showPetBubble(IDLE_CLICK_MESSAGE, PET_CLICK_MESSAGE_HOLD_MS);
+  await handleNormalPetSpriteClick();
 }
 
 function schedulePetWindowResize(scalePercent) {
@@ -1289,7 +1330,6 @@ async function beginPetResize(event) {
 
   event.preventDefault?.();
   event.stopPropagation?.();
-  resetTapClicks();
   resetLongIdleClock();
   isResizingPet = true;
   petRoot.classList.add('resizing');
@@ -1394,7 +1434,6 @@ async function beginPetDrag(event) {
     suppressClickAfterPanelClose = true;
     await setToolPanelOpen(false);
   }
-  resetTapClicks();
   resetLongIdleClock();
   isDraggingPet = true;
   suppressClickAfterDrag = false;
@@ -1499,13 +1538,11 @@ function bindPetInteractions() {
   petSprite.addEventListener('click', async () => {
     if (suppressClickAfterPanelClose) {
       suppressClickAfterPanelClose = false;
-      resetTapClicks();
       return;
     }
 
     if (suppressClickAfterDrag) {
       suppressClickAfterDrag = false;
-      resetTapClicks();
       return;
     }
 
@@ -1515,7 +1552,6 @@ function bindPetInteractions() {
   petSprite.addEventListener('contextmenu', async (event) => {
     event.preventDefault();
     event.stopPropagation();
-    resetTapClicks();
     suppressClickAfterPanelClose = false;
     suppressClickAfterDrag = false;
     if (isFishingActive()) {
@@ -1666,6 +1702,8 @@ async function updatePetFromBackend(data = {}) {
     updateTimerText(`${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
   }
 
+  rememberBreakStatus({ ...timer, mode: timerStatus || timer.mode }, lastRemainingSeconds);
+
   if (timerStatus) {
     lastTimerStatus = timerStatus;
     if (!isRestTimerMode()) {
@@ -1705,9 +1743,9 @@ async function updatePetFromBackend(data = {}) {
     lastCompletedFocusKey = completedFocusKey;
     lastTimerStatus = 'break';
     await playStateThen('happy', async () => {
-      await setPetState('rest', { rememberPrevious: false });
+      await setPetState(resolveRestState(), { rememberPrevious: false });
       await checkFishingInvite();
-      return 'rest';
+      return resolveRestState();
     });
     return;
   }
@@ -1738,7 +1776,7 @@ async function updatePetFromBackend(data = {}) {
   }
 
   if (timerStatus === 'break' || timerStatus === 'rest' || petStatus === 'rest') {
-    await setPetState('rest');
+    await setPetState(resolveRestState());
     await checkFishingInvite();
     updateRestInviteBubble();
     return;
@@ -1758,7 +1796,7 @@ async function updatePetFromBackend(data = {}) {
     return;
   }
 
-  if (['sleep', 'tap', 'greet', 'run', 'roll', 'surf', 'exercise', 'guitar', 'scratch', 'stretch'].includes(petStatus)) {
+  if (['sleep', 'tap', 'greet', 'run', 'roll', 'surf', 'exercise', 'guitar', 'scratch', 'stretch', ...PLAYING_STATES].includes(petStatus)) {
     await setPetState(petStatus);
     return;
   }
