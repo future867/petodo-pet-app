@@ -7,28 +7,91 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <section class="login-screen" id="loginScreen" aria-labelledby="loginTitle">
+    <form class="login-card" id="loginForm">
+      <span class="login-mark" aria-hidden="true">P</span>
+      <p class="eyebrow">Petodo</p>
+      <h1 id="loginTitle">欢迎回来</h1>
+      <p>登录你的账号，继续今天的安静专注。</p>
+      <label class="field">
+        <span>账号</span>
+        <input id="loginAccountInput" type="text" placeholder="例如 Amanda" autocomplete="username">
+      </label>
+      <label class="field">
+        <span>密码</span>
+        <input id="loginPasswordInput" type="password" placeholder="至少 4 位" autocomplete="current-password">
+      </label>
+      <div class="login-actions">
+        <button class="btn btn-primary" type="submit">登录</button>
+        <button class="btn btn-secondary" id="registerButton" type="button">创建账号</button>
+      </div>
+    </form>
+  </section>
+
   <main class="app-shell">
+    <header class="app-toolbar" aria-label="应用工具栏">
+      <div class="toolbar-left">
+        <span class="toolbar-mark" aria-hidden="true">P</span>
+        <button class="toolbar-icon-button" type="button" aria-label="返回" title="返回">‹</button>
+        <button class="toolbar-icon-button" type="button" aria-label="前进" title="前进">›</button>
+      </div>
+      <nav class="toolbar-menu" aria-label="应用菜单">
+        <button type="button">文件</button>
+        <button type="button">编辑</button>
+        <button type="button">查看</button>
+        <button type="button">窗口</button>
+        <button type="button">帮助</button>
+      </nav>
+      <div class="window-controls" aria-label="窗口控制">
+        <button class="window-control-button" id="windowMinimizeButton" type="button" aria-label="最小化" title="最小化">−</button>
+        <button class="window-control-button" id="windowMaximizeButton" type="button" aria-label="最大化或还原" title="最大化或还原">□</button>
+        <button class="window-control-button close" id="windowCloseButton" type="button" aria-label="关闭" title="关闭">×</button>
+      </div>
+    </header>
+
     <aside class="sidebar" aria-label="主导航">
       <div class="brand">
         <span class="brand-mark" aria-hidden="true">P</span>
-        <div>
+        <div class="brand-copy">
           <p class="brand-name">Petodo</p>
           <p class="brand-note">Study companion</p>
         </div>
       </div>
 
       <nav class="nav-list">
-        <button class="nav-item is-active" type="button" data-page="home">首页</button>
-        <button class="nav-item" type="button" data-page="todo">待办清单</button>
-        <button class="nav-item" type="button" data-page="shop">补给商店</button>
-        <button class="nav-item" type="button" data-page="journal">专注记录</button>
-        <button class="nav-item" type="button" data-page="countdown">未来倒计时</button>
-        <button class="nav-item" type="button" data-page="settings">设置</button>
+        <button class="nav-item is-active" type="button" data-page="home" title="首页" aria-label="首页">
+          <span class="nav-icon" aria-hidden="true">⌂</span>
+          <span class="nav-label">首页</span>
+        </button>
+        <button class="nav-item" type="button" data-page="todo" title="待办清单" aria-label="待办清单">
+          <span class="nav-icon" aria-hidden="true">✓</span>
+          <span class="nav-label">待办清单</span>
+        </button>
+        <button class="nav-item" type="button" data-page="shop" title="补给商店" aria-label="补给商店">
+          <span class="nav-icon" aria-hidden="true">＋</span>
+          <span class="nav-label">补给商店</span>
+        </button>
+        <button class="nav-item" type="button" data-page="journal" title="专注记录" aria-label="专注记录">
+          <span class="nav-icon" aria-hidden="true">▦</span>
+          <span class="nav-label">专注记录</span>
+        </button>
+        <button class="nav-item" type="button" data-page="countdown" title="未来倒计时" aria-label="未来倒计时">
+          <span class="nav-icon" aria-hidden="true">◷</span>
+          <span class="nav-label">未来倒计时</span>
+        </button>
+        <button class="nav-item" type="button" data-page="settings" title="设置" aria-label="设置">
+          <span class="nav-icon" aria-hidden="true">⚙</span>
+          <span class="nav-label">设置</span>
+        </button>
       </nav>
 
       <div class="sidebar-footer">
         <p>Current task</p>
         <strong id="sidebarTaskText">暂未选择任务</strong>
+        <button class="avatar-button sidebar-avatar-button" type="button" data-page-shortcut="settings" aria-label="打开设置">
+          <span class="avatar-fallback" data-avatar-fallback>U</span>
+          <img data-user-avatar alt="用户头像" hidden>
+        </button>
       </div>
     </aside>
 
@@ -36,7 +99,7 @@
       <section class="page is-active" id="page-home" data-page-panel="home" aria-labelledby="homeTitle">
         <header class="page-header">
           <p class="eyebrow">Warm study log</p>
-          <h1 id="homeTitle">Petodo</h1>
+          <h1 id="homeTitle">Hi，Petodo！</h1>
           <p>和小动物一起完成今天的专注。</p>
           <div class="countdown-header-actions">
             <button class="btn btn-secondary countdown-widget-button" id="countdownWidgetButton" type="button">打开桌面小组件</button>
@@ -157,6 +220,21 @@
           <article class="shop-item">
             <div>
               <div class="item-heading">
+                <h2>西瓜</h2>
+                <span class="tag">轻补给</span>
+              </div>
+              <p>恢复少量饱食度。</p>
+              <p class="effect">恢复效果：饱食度 +5</p>
+            </div>
+            <div class="item-action">
+              <strong class="price">10 积分</strong>
+              <button class="btn btn-secondary redeem-button" type="button" data-item="西瓜" data-food-id="watermelon">兑换</button>
+            </div>
+          </article>
+
+          <article class="shop-item">
+            <div>
+              <div class="item-heading">
                 <h2>汉堡</h2>
                 <span class="tag">轻补给</span>
               </div>
@@ -202,49 +280,27 @@
       </section>
 
       <section class="page" id="page-journal" data-page-panel="journal" aria-labelledby="journalTitle">
-        <header class="page-header compact">
-          <p class="eyebrow">Study Journal</p>
-          <h1 id="journalTitle">Study Journal / 专注记录</h1>
-          <p>把今天的专注变成清楚可见的记录。</p>
+        <header class="journal-hero">
+          <div>
+            <p class="eyebrow">Study Journal</p>
+            <h1 id="journalTitle">专注记录</h1>
+            <p id="journalRangeText">把今天的专注变成清楚可见的记录。</p>
+          </div>
+          <div class="journal-toolbar" aria-label="统计视图切换">
+            <div class="journal-tabs" role="tablist" aria-label="统计周期">
+              <button class="journal-tab is-active" type="button" data-journal-view="day">按天</button>
+              <button class="journal-tab" type="button" data-journal-view="week">按周</button>
+              <button class="journal-tab" type="button" data-journal-view="month">按月</button>
+              <button class="journal-tab" type="button" data-journal-view="year">按年</button>
+            </div>
+            <div class="journal-period-actions" aria-label="切换时间">
+              <button class="journal-arrow" id="journalPrevButton" type="button" aria-label="上一段">‹</button>
+              <button class="journal-arrow" id="journalNextButton" type="button" aria-label="下一段">›</button>
+            </div>
+          </div>
         </header>
 
-        <div class="stats-grid">
-          <article class="stat-card">
-            <span>今日专注次数</span>
-            <strong id="journalTodayText">0</strong>
-          </article>
-          <article class="stat-card">
-            <span>累计专注时长</span>
-            <strong id="journalTotalTimeText">0 min</strong>
-          </article>
-          <article class="stat-card">
-            <span>连续学习天数</span>
-            <strong id="journalStreakText">0</strong>
-          </article>
-          <article class="stat-card">
-            <span>当前积分</span>
-            <strong class="accent-number" id="journalPointsText">0</strong>
-          </article>
-        </div>
-
-        <section class="journal-card" aria-label="最近 7 天专注记录">
-          <div class="section-title">
-            <h2>最近 7 天专注记录</h2>
-            <span>min</span>
-          </div>
-          <div class="day-list" id="journalDayList"></div>
-        </section>
-
-        <section class="journal-card" aria-label="最近完成记录">
-          <div class="section-title">
-            <h2>最近完成记录</h2>
-            <span id="journalRecentSummary">0 records</span>
-          </div>
-          <div class="recent-list" id="journalRecentList"></div>
-          <div class="empty-state" id="journalEmptyState">
-            <p>还没有完成的专注，先开始一次 25 分钟。</p>
-          </div>
-        </section>
+        <div class="journal-view-content" id="journalViewContent"></div>
       </section>
 
       <section class="page" id="page-countdown" data-page-panel="countdown" aria-labelledby="countdownTitle">
@@ -284,6 +340,34 @@
           <h1 id="settingsTitle">Settings / 设置</h1>
           <p>保持番茄钟节奏和桌宠提醒清晰可控。</p>
         </header>
+
+        <section class="settings-card profile-settings-card" aria-label="个人资料设置">
+          <div class="section-title">
+            <h2>个人资料</h2>
+            <span>Profile</span>
+          </div>
+          <div class="profile-settings">
+            <div class="profile-preview">
+              <button class="avatar-button profile-avatar-button" id="profileAvatarButton" type="button" aria-label="选择头像">
+                <span class="avatar-fallback" data-avatar-fallback>U</span>
+                <img data-user-avatar alt="用户头像" hidden>
+              </button>
+              <p>头像会显示在顶部和左侧边栏。</p>
+            </div>
+            <div class="profile-fields">
+              <label class="field">
+                <span>昵称</span>
+                <input id="profileNameInput" type="text" placeholder="输入你的昵称" autocomplete="name">
+              </label>
+              <div class="profile-actions">
+                <input id="profileAvatarInput" type="file" accept="image/*" hidden>
+                <button class="btn btn-secondary" id="chooseAvatarButton" type="button">选择头像</button>
+                <button class="btn btn-primary" id="saveProfileButton" type="button">保存资料</button>
+                <button class="btn btn-ghost profile-logout-button" id="logoutButton" type="button">退出登录</button>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <section class="settings-card" aria-label="设置项">
           <label class="setting-row">
@@ -389,7 +473,10 @@
       <p class="completion-label">Focus complete</p>
       <h2 id="completionTitle">恭喜计时完成</h2>
       <p>休息计时已经开始，小动物正在开心庆祝。</p>
-      <button class="btn btn-primary" id="completionCloseButton" type="button">知道了</button>
+      <div class="completion-actions">
+        <button class="btn btn-secondary" id="completionCloseButton" type="button">休息一下</button>
+        <button class="btn btn-primary" id="completionContinueButton" type="button">继续专注</button>
+      </div>
     </div>
   </section>
 

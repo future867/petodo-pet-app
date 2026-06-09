@@ -4,12 +4,15 @@ const summaryElement = document.querySelector('#todoWidgetSummary');
 const refreshButton = document.querySelector('#todoWidgetRefreshButton');
 const openMainButton = document.querySelector('#todoWidgetOpenMainButton');
 const closeButton = document.querySelector('#todoWidgetCloseButton');
+const resizeHandle = document.querySelector('#todoWidgetResizeHandle');
+const widgetShell = document.querySelector('.todo-widget-shell');
 
 let todoState = {
   todoList: [],
   currentTaskId: '',
   todoListDate: ''
 };
+let resizeSession = null;
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (char) => {
@@ -26,11 +29,8 @@ function escapeHtml(value) {
 
 function getVisibleTasks(tasks = []) {
   const unfinished = tasks.filter((task) => !task.completed);
-  if (unfinished.length > 0) {
-    return unfinished.slice(0, 5);
-  }
-
-  return tasks.slice(0, 5);
+  const completed = tasks.filter((task) => task.completed);
+  return [...unfinished, ...completed];
 }
 
 function renderEmpty(message = '今天还没有待办，给自己安排一个小目标吧。') {
@@ -143,6 +143,115 @@ async function openMainWindow() {
   await window.petodo.showMainWindow('todo');
 }
 
+function hasTodoWidgetResizeApi() {
+  return Boolean(window.petodo?.getTodoWidgetBounds && window.petodo?.resizeTodoWidget);
+}
+
+function scheduleTodoWidgetResize(width, height) {
+  if (!resizeSession || !hasTodoWidgetResizeApi()) {
+    return;
+  }
+
+  resizeSession.nextWidth = width;
+  resizeSession.nextHeight = height;
+
+  if (resizeSession.resizeFrame) {
+    return;
+  }
+
+  resizeSession.resizeFrame = window.requestAnimationFrame(async () => {
+    const session = resizeSession;
+    if (!session) {
+      return;
+    }
+
+    session.resizeFrame = null;
+
+    try {
+      await window.petodo.resizeTodoWidget({
+        width: session.nextWidth,
+        height: session.nextHeight
+      });
+    } catch (error) {
+      console.warn('Failed to resize todo widget:', error);
+    }
+  });
+}
+
+async function beginTodoWidgetResize(event) {
+  if ((event.button !== undefined && event.button !== 0) || !hasTodoWidgetResizeApi()) {
+    return;
+  }
+
+  event.preventDefault?.();
+  event.stopPropagation?.();
+
+  const bounds = await window.petodo.getTodoWidgetBounds();
+  if (!bounds) {
+    return;
+  }
+
+  try {
+    resizeHandle.setPointerCapture(event.pointerId);
+  } catch {
+    // Pointer capture is best-effort while the frameless window changes size.
+  }
+
+  widgetShell?.classList.add('is-resizing');
+  resizeSession = {
+    pointerId: event.pointerId,
+    startScreenX: event.screenX,
+    startScreenY: event.screenY,
+    startWidth: bounds.width,
+    startHeight: bounds.height,
+    nextWidth: bounds.width,
+    nextHeight: bounds.height,
+    resizeFrame: null
+  };
+}
+
+function moveTodoWidgetResize(event) {
+  if (!resizeSession || event.pointerId !== resizeSession.pointerId) {
+    return;
+  }
+
+  event.preventDefault?.();
+  const deltaX = event.screenX - resizeSession.startScreenX;
+  const deltaY = event.screenY - resizeSession.startScreenY;
+  scheduleTodoWidgetResize(
+    resizeSession.startWidth + deltaX,
+    resizeSession.startHeight + deltaY
+  );
+}
+
+async function endTodoWidgetResize(event) {
+  if (!resizeSession || event.pointerId !== resizeSession.pointerId) {
+    return;
+  }
+
+  const session = resizeSession;
+  resizeSession = null;
+  widgetShell?.classList.remove('is-resizing');
+
+  try {
+    resizeHandle.releasePointerCapture(event.pointerId);
+  } catch {
+    // Pointer capture may already be released after the window resize.
+  }
+
+  if (session.resizeFrame) {
+    window.cancelAnimationFrame(session.resizeFrame);
+    try {
+      await window.petodo.resizeTodoWidget({
+        width: session.nextWidth,
+        height: session.nextHeight
+      });
+    } catch (error) {
+      console.warn('Failed to finish todo widget resize:', error);
+    }
+  }
+}
+
 todoListElement.addEventListener('change', (event) => {
   if (!event.target.matches('.todo-widget-checkbox')) {
     return;
@@ -159,6 +268,10 @@ todoListElement.addEventListener('change', (event) => {
 refreshButton?.addEventListener('click', refreshWidget);
 openMainButton?.addEventListener('click', openMainWindow);
 closeButton?.addEventListener('click', closeWidget);
+resizeHandle?.addEventListener('pointerdown', beginTodoWidgetResize);
+window.addEventListener('pointermove', moveTodoWidgetResize);
+window.addEventListener('pointerup', endTodoWidgetResize);
+window.addEventListener('pointercancel', endTodoWidgetResize);
 
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {

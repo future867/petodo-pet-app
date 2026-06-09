@@ -366,24 +366,55 @@ body {
   margin: 0 0 9px;
 }
 
-.fishing-inventory div {
+.inventory-item {
   display: flex;
   justify-content: space-between;
   gap: 4px;
   padding: 6px 7px;
+  border: 1px solid transparent;
   border-radius: 9px;
   background: rgba(255, 245, 220, 0.62);
+  color: inherit;
+  font: inherit;
   font-size: 11px;
+  text-align: left;
+  cursor: pointer;
 }
 
-.fishing-inventory dt {
+.inventory-item.is-static {
+  cursor: default;
+}
+
+.inventory-item:not(.is-static):hover {
+  border-color: rgba(255, 174, 68, 0.34);
+  background: rgba(255, 247, 225, 0.94);
+}
+
+.inventory-item:not(.is-static):active {
+  transform: translateY(1px);
+}
+
+.inventory-item:disabled,
+.inventory-item.is-disabled {
+  color: rgba(43, 38, 31, 0.42);
+  background: rgba(244, 239, 229, 0.62);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.inventory-item span {
   color: rgba(35, 31, 26, 0.72);
 }
 
-.fishing-inventory dd {
+.inventory-item b {
   margin: 0;
   color: #32271d;
   font-weight: 800;
+}
+
+.inventory-item:disabled b,
+.inventory-item.is-disabled b {
+  color: rgba(43, 38, 31, 0.42);
 }
 
 .panel-title {

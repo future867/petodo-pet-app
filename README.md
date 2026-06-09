@@ -84,6 +84,7 @@ npm start
 - 待办清单会按本机日期保存，跨天后询问是否延续未完成待办；已完成待办不会延续到第二天
 - 主窗口倒计时会逐秒平滑显示，避免从 37 秒直接跳到 35 秒
 - 专注完成后会弹出“恭喜计时完成”提示，并显示烟花效果
+- 普通短休息会分两段播放休息动画；每完成 4 次专注会进入 15 分钟长休息，长休息也会按时间切换两段休息动画
 - 休息阶段会按鱼饵和保底规则随机邀请钓鱼，奖励会用图标弹出并保存到本地
 - 主窗口投喂按钮和补给商店兑换按钮已接入积分扣减
 - 桌宠窗口可以根据后端状态切换动画，并显示头顶倒计时
@@ -98,28 +99,35 @@ npm start
     <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-idle-1.gif" width="120"><br>idle_1<br>默认待机</td>
     <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-idle.gif" width="120"><br>idle_2<br>长时间待机</td>
     <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-focus.gif" width="120"><br>focus<br>专注中</td>
-    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-rest.gif" width="120"><br>rest<br>休息</td>
-    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-happy-preview.gif" width="120"><br>happy<br>完成专注</td>
-    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-sleep.gif" width="120"><br>sleep<br>睡觉</td>
+    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-rest.gif" width="120"><br>rest_1<br>短休息前 4 分钟</td>
+    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-rest-2.gif" width="120"><br>rest_2<br>短休息最后 1 分钟</td>
+    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-rest-long-start.gif" width="120"><br>rest_long_start<br>长休息开始</td>
+    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-rest-long-after-5.gif" width="120"><br>rest_long_after_5<br>长休息 5 分钟后</td>
   </tr>
   <tr>
+    <td align="center"><img src="frontend/assets/pet/luoxiaohei/img/happy/luoxiaohei-happy-01.png" width="120"><br>happy<br>完成专注</td>
+    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-sleep.gif" width="120"><br>sleep<br>睡觉</td>
     <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-hungry.webp" width="120"><br>hungry<br>饥饿</td>
-    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-hungry-heavy.gif" width="120"><br>hungry_heavy<br>重度饥饿</td>
+    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-hungry-heavy.webp" width="120"><br>hungry_heavy<br>重度饥饿</td>
     <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-angry.gif" width="120"><br>angry<br>生气</td>
     <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-eating.gif" width="120"><br>eating<br>进食</td>
+  </tr>
+  <tr>
     <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-finished-eating.gif" width="120"><br>finished_eating<br>吃饱反馈</td>
     <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-greet.gif" width="120"><br>greet<br>打招呼</td>
+    <td align="center"><img src="frontend/assets/pet/luoxiaohei/img/run/luoxiaohei-run-01.png" width="120"><br>run<br>跑步</td>
+    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-angry-before-table.gif" width="120"><br>tap<br>多次打招呼后不耐烦</td>
+    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-roll.gif" width="120"><br>roll<br>打滚</td>
+    <td align="center"><img src="frontend/assets/pet/luoxiaohei/img/surf/luoxiaohei-surf-01.png" width="120"><br>surf<br>冲浪</td>
   </tr>
   <tr>
-    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-run-preview.gif" width="120"><br>run<br>跑步</td>
-    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-tap.webp" width="120"><br>tap<br>连续点击</td>
-    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-roll.gif" width="120"><br>roll<br>打滚</td>
-    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-surf-preview.gif" width="120"><br>surf<br>冲浪</td>
     <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-guitar.gif" width="120"><br>guitar<br>弹吉他</td>
     <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-scratch.gif" width="120"><br>scratch<br>磨爪子</td>
-  </tr>
-  <tr>
     <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-stretch.gif" width="120"><br>stretch<br>伸懒腰</td>
+    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-playing-01.gif" width="120"><br>playing_01<br>玩耍</td>
+    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-playing-02.gif" width="120"><br>playing_02<br>玩耍</td>
+    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-playing-03.gif" width="120"><br>playing_03<br>玩耍</td>
+    <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-playing-04.gif" width="120"><br>playing_04<br>玩耍</td>
     <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-fishing.gif" width="120"><br>fishing<br>休息钓鱼</td>
     <td align="center"><img src="frontend/assets/pet/luoxiaohei/gif/luoxiaohei-idle.gif" width="120"><br>drag<br>拖动</td>
   </tr>
@@ -134,7 +142,10 @@ npm start
 | idle_1 | 罗小黑默认待机 | 打开桌宠后、动作结束后、无特殊事件 |
 | idle_2 | 原待机动画 | 番茄钟未运行且待机 2 分钟后 |
 | focus | 专注状态表情 | 番茄钟专注中 |
-| rest | 舔爪休息动画 | 专注结束后的休息阶段 |
+| rest_1 | 舔爪休息动画 | 普通短休息前 4 分钟 |
+| rest_2 | 白边趴睡短休息动画 | 普通短休息最后 1 分钟 |
+| rest_long_start | 枕头趴睡动画 | 长休息开始后的前 5 分钟 |
+| rest_long_after_5 | 熟睡动画 | 长休息进行 5 分钟后 |
 | fishing | 钓鱼动画 | 休息阶段接受钓鱼邀请后 |
 | happy | 新的开心反馈动画 | 完成一次专注后 |
 | sleep | 200×200 趴着睡觉动画 | 长时间未操作 |
@@ -143,17 +154,18 @@ npm start
 | angry | 掀桌动画 + hungry 气泡 | 极低饱食度或长时间饥饿后 |
 | eating | 通用吃饭动画 | 兜底进食状态 |
 | eating_hamburger | 吃汉堡静态图 | 用户喂食汉堡 |
-| eating_pizza | 吃披萨动画 | 用户喂食披萨 |
+| eating_pizza | 白边吃披萨动画 | 用户喂食披萨，单独延长进食展示时间 |
 | eating_chicken_leg | 吃鸡腿静态图 | 用户喂食鸡腿 |
 | finished_eating | 吃饱反馈动画 | 吃完后开心反馈 |
-| greet | 打招呼动画 | 鼠标单击一次小黑或右键功能面板选择“打招呼” |
+| greet | 打招呼动画 | 非休息状态下鼠标单击一次小黑，或右键功能面板选择“打招呼” |
 | run | 跑步动画 | 右键功能面板选择“跑步” |
-| tap | 连续点击反馈图 | 短时间内连续点击 |
+| tap | 不耐烦反馈动画 | 非休息状态下成功打招呼 3 次后，再次点击小黑 |
 | roll | 打滚动画 | 右键功能面板选择“打滚” |
 | surf | 冲浪动画 | 右键功能面板选择“冲浪” |
 | guitar | 弹吉他动画 | 右键功能面板选择“弹吉他” |
 | scratch | 磨爪子动画 | 右键功能面板选择“磨爪子” |
 | stretch | 伸懒腰动画 | 右键功能面板选择“伸懒腰” |
+| playing_01 / playing_02 / playing_03 / playing_04 | 玩耍动画 | 右键功能面板选择“玩耍”后随机播放其中一种 |
 | drag | 拖动时保持当前显示图 | 移动桌宠窗口 |
 
 ## 休息钓鱼小游戏
@@ -168,3 +180,13 @@ npm start
 
 - 完整历史统计展示
 - 装饰商品兑换后的可视效果
+
+## 2026-06-05 更新：小黑背包奖励使用
+
+- 小黑背包里的小鱼干、普通鱼、金色鱼已经可以点击使用。
+- 点击普通鱼会消耗 1 条普通鱼，并增加 35 积分。
+- 点击金色鱼会消耗 1 条金色鱼，并增加 50 积分。
+- 点击小鱼干会消耗 1 个小鱼干，并触发汉堡喂食动画。
+- 三种奖励使用成功后，都会播放新增的透明反馈动图 `luoxiaohei-reward-redeem.webp`。
+- 背包奖励数量、金色鱼数量和兑换得到的积分仍保存到本地，并和主窗口积分显示保持一致。
+- 饱食度恢复到 60% 及以上后，桌宠不会继续停留在 hungry、hungry_heavy 或 angry 旧图，会跟随后端真实状态显示，例如睡觉时显示 sleep。

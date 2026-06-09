@@ -15,6 +15,7 @@ class PetRenderer {
     this.frameCache = new Map();
     this.timerTextValue = this.timerTextElement?.textContent || '25:00';
     this.currentStateBubble = null;
+    this.stateRequestId = 0;
   }
 
   async init() {
@@ -43,10 +44,16 @@ class PetRenderer {
     this.clearTimers();
     this.previousState = options.rememberPrevious === false ? this.previousState : this.currentState;
     this.currentState = nextState;
+    const requestId = this.stateRequestId + 1;
+    this.stateRequestId = requestId;
     this.frameIndex = 0;
     this.updateRootState(nextState, null);
 
     const asset = await this.resolveAsset(nextState);
+    if (requestId !== this.stateRequestId || this.currentState !== nextState) {
+      return;
+    }
+
     if (!asset) {
       this.configureBubble(nextState, null);
       this.updateRootState(nextState, null);

@@ -2,8 +2,10 @@ from datetime import datetime
 
 from fastapi.testclient import TestClient
 
+import account_auth
 import main
 import storage
+from account_auth import AccountBook
 from fishing_logic import FishingLedger
 from focus_records import FocusRecordBook
 from pet_logic import PetStateMachine
@@ -122,6 +124,45 @@ def test_break_countdown_is_anchored_to_focus_end_time():
     assert finished.remaining_seconds == 0
 
 
+def test_every_fourth_focus_uses_long_break():
+    clock = FakeClock()
+    timer = PomodoroTimer(
+        focus_seconds=10,
+        break_seconds=5,
+        long_break_seconds=15,
+        long_break_interval=4,
+        time_provider=clock.now,
+    )
+
+    for cycle in range(1, 4):
+        timer.start()
+        clock.advance(10.2)
+        status = timer.status()
+        assert status.mode == "break"
+        assert status.break_type == "short"
+        assert status.break_seconds == 5
+        assert status.long_break_seconds == 15
+        assert status.long_break_interval == 4
+        assert status.last_completed_focus_id == cycle
+        clock.advance(status.remaining_seconds + 0.1)
+        assert timer.status().mode == "idle"
+
+    timer.start()
+    clock.advance(10.2)
+    long_break = timer.status()
+    assert long_break.mode == "break"
+    assert long_break.break_type == "long"
+    assert long_break.break_seconds == 15
+    assert long_break.last_completed_focus_id == 4
+
+    clock.advance(5.1)
+    after_five_minutes = timer.status()
+    assert after_five_minutes.mode == "break"
+    assert after_five_minutes.break_type == "long"
+    assert after_five_minutes.break_elapsed_seconds >= 5
+    assert after_five_minutes.remaining_seconds <= 10
+
+
 def test_focus_records_do_not_skip_after_restart_with_same_focus_id():
     first_clock = FakeClock()
     first_timer = PomodoroTimer(focus_seconds=10, break_seconds=5, time_provider=first_clock.now)
@@ -211,10 +252,24 @@ def test_pet_states_follow_timer_hunger_sleep_and_feed():
 
     clock.advance(4)
     pet.set_attributes(hunger=60)
+    watermelon_result = pet.feed(timer.status(), "watermelon")
+    assert watermelon_result.food_name == "西瓜"
+    assert watermelon_result.status.state == "eating_watermelon"
+    assert watermelon_result.hunger_added == 5
+
+    clock.advance(3)
+    assert pet.get_pet_state(timer.status()).state == "finished_eating"
+
+    clock.advance(4)
+    pet.set_attributes(hunger=60)
     pizza_result = pet.feed(timer.status(), "pizza")
     assert pizza_result.food_name == "披萨"
     assert pizza_result.status.state == "eating_pizza"
     assert pizza_result.hunger_added == 25
+    clock.advance(3.3)
+    assert pet.get_pet_state(timer.status()).state == "eating_pizza"
+    clock.advance(0.2)
+    assert pet.get_pet_state(timer.status()).state == "finished_eating"
 
     clock.advance(4)
     pet.set_attributes(hunger=60)
@@ -295,6 +350,49 @@ def test_heavy_hunger_only_turns_angry_after_long_wait():
     assert very_low_status.state == "angry"
     assert very_low_status.reason == "饱食度低于 10%，小动物已经非常饿"
 
+def test_pet_leaves_angry_after_hunger_recovers():
+    clock = FakeClock()
+    timer = PomodoroTimer(focus_seconds=10, break_seconds=5, time_provider=clock.now)
+    pet = PetStateMachine(
+        time_provider=clock.now,
+        datetime_provider=clock.datetime_now,
+        storage_enabled=False,
+        idle_sleep_seconds=24 * 60 * 60,
+        hunger_decay_seconds=24 * 60 * 60,
+    )
+
+    pet.set_attributes(hunger=25)
+    clock.advance(12 * 60 * 60)
+    assert pet.get_pet_state(timer.status()).state == "angry"
+
+    pet.set_attributes(hunger=99)
+    recovered_status = pet.get_pet_state(timer.status())
+
+    assert recovered_status.hunger == 99
+    assert recovered_status.state == "idle"
+
+
+def test_pet_can_sleep_after_hunger_recovers_from_angry():
+    clock = FakeClock()
+    timer = PomodoroTimer(focus_seconds=10, break_seconds=5, time_provider=clock.now)
+    pet = PetStateMachine(
+        time_provider=clock.now,
+        datetime_provider=clock.datetime_now,
+        storage_enabled=False,
+        idle_sleep_seconds=30,
+        hunger_decay_seconds=24 * 60 * 60,
+    )
+
+    pet.set_attributes(hunger=25)
+    clock.advance(12 * 60 * 60)
+    assert pet.get_pet_state(timer.status()).state == "angry"
+
+    pet.set_attributes(hunger=67)
+    recovered_status = pet.get_pet_state(timer.status())
+
+    assert recovered_status.hunger == 67
+    assert recovered_status.state == "sleep"
+
 
 def test_storage_recovers_from_broken_files(tmp_path, monkeypatch):
     pet_file = tmp_path / "pet_data.json"
@@ -325,6 +423,46 @@ def test_storage_recovers_from_broken_files(tmp_path, monkeypatch):
 
     storage.save_pet_data({"hunger": 60, "mood": 70, "energy": 80})
     assert storage.load_pet_data(now=123)["hunger"] == 60
+
+
+def test_accounts_are_unique_and_backend_data_is_isolated(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(account_auth, "ACCOUNTS_DATA_FILE", tmp_path / "accounts.json")
+    monkeypatch.setattr(main, "account_book", AccountBook())
+    monkeypatch.setattr(main, "account_runtimes", {})
+
+    client = TestClient(main.app)
+    amanda = client.post("/auth/register", json={"account": "Amanda", "password": "1234"}).json()
+    brian = client.post("/auth/register", json={"account": "Brian", "password": "1234"}).json()
+
+    duplicate = client.post("/auth/register", json={"account": "amanda", "password": "1234"})
+    wrong_password = client.post("/auth/login", json={"account": "Amanda", "password": "wrong"})
+
+    assert duplicate.status_code == 409
+    assert wrong_password.status_code == 401
+    assert amanda["account_id"] != brian["account_id"]
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    amanda_runtime = main.get_runtime(amanda["account_id"])
+    amanda_runtime.focus_records.data["records"] = [
+        {
+            "focus_id": 1,
+            "started_at": 1_700_000_000,
+            "completed_at": 1_700_001_500,
+            "focus_seconds": 1500,
+            "completed_date": today,
+            "task_id": "task-amanda",
+        }
+    ]
+
+    amanda_status = client.get("/app/status", headers={"X-Petodo-Account": amanda["account_id"]}).json()
+    brian_status = client.get("/app/status", headers={"X-Petodo-Account": brian["account_id"]}).json()
+
+    assert amanda_status["total_completed_count"] == 1
+    assert amanda_status["points"] == 20
+    assert amanda_status["focus_stats"]["records"][0]["task_id"] == "task-amanda"
+    assert brian_status["total_completed_count"] == 0
+    assert brian_status["points"] == 0
 
 
 def test_app_status_returns_main_backend_shape(monkeypatch):
@@ -403,18 +541,19 @@ def test_points_and_shop_redeem_follow_completed_focus(monkeypatch):
     assert second_status["points_status"]["spent_points"] == 0
 
     test_pet.set_attributes(hunger=50)
-    redeemed = client.post("/shop/redeem", json={"food_id": "hamburger"}).json()
+    redeemed = client.post("/shop/redeem", json={"food_id": "watermelon"}).json()
     after_redeem = client.get("/app/status").json()
     rejected = client.post("/shop/redeem", json={"food_id": "hamburger"}).json()
 
     assert redeemed["success"] is True
-    assert redeemed["price"] == 20
-    assert redeemed["remaining_points"] == 0
-    assert redeemed["feed_result"]["hunger_added"] == 10
-    assert after_redeem["points"] == 0
-    assert after_redeem["points_status"]["spent_points"] == 20
+    assert redeemed["price"] == 10
+    assert redeemed["remaining_points"] == 10
+    assert redeemed["feed_result"]["status"]["state"] == "eating_watermelon"
+    assert redeemed["feed_result"]["hunger_added"] == 5
+    assert after_redeem["points"] == 10
+    assert after_redeem["points_status"]["spent_points"] == 10
     assert rejected["success"] is False
-    assert rejected["remaining_points"] == 0
+    assert rejected["remaining_points"] == 10
     assert rejected["feed_result"] is None
 
 
@@ -434,8 +573,8 @@ def test_shop_redeem_uses_pizza_and_chicken_leg_tiers(monkeypatch):
         ).model_dump()
         for index in range(1, 6)
     ]
-    test_records.data["last_recorded_focus_id"] = 5
-    test_records.data["last_recorded_focus_completed_at"] = base_record.completed_at + 5
+    test_records.data["last_recorded_focus_id"] = test_timer.status().last_completed_focus_id
+    test_records.data["last_recorded_focus_completed_at"] = test_timer.status().last_completed_focus_completed_at
     test_shop = ShopLedger(time_provider=clock.now, storage_enabled=False)
     test_fishing = FishingLedger(time_provider=clock.now, storage_enabled=False)
 
@@ -606,3 +745,76 @@ def test_fishing_bonus_points_can_be_spent_in_shop(monkeypatch):
     assert result["success"] is True
     assert result["price"] == 60
     assert result["remaining_points"] == 10
+
+
+def test_fishing_inventory_rewards_can_be_used_from_bag(monkeypatch):
+    clock = FakeClock()
+    test_timer = PomodoroTimer(time_provider=clock.now)
+    test_pet = PetStateMachine(time_provider=clock.now, datetime_provider=clock.datetime_now, storage_enabled=False)
+    test_records = FocusRecordBook(datetime_provider=clock.datetime_now, storage_enabled=False)
+    test_shop = ShopLedger(time_provider=clock.now, storage_enabled=False)
+    test_fishing = FishingLedger(time_provider=clock.now, storage_enabled=False)
+    test_fishing.data["fishInventory"]["driedFish"] = 1
+    test_fishing.data["fishInventory"]["fish"] = 2
+    test_fishing.data["rareFishCount"] = 1
+
+    monkeypatch.setattr(main, "timer", test_timer)
+    monkeypatch.setattr(main, "pet", test_pet)
+    monkeypatch.setattr(main, "focus_records", test_records)
+    monkeypatch.setattr(main, "shop", test_shop)
+    monkeypatch.setattr(main, "fishing", test_fishing)
+    client = TestClient(main.app)
+
+    fish_result = client.post("/fishing/reward/use", json={"item": "fish"}).json()
+    golden_result = client.post("/fishing/reward/use", json={"item": "golden_fish"}).json()
+    dried_result = client.post("/fishing/reward/use", json={"item": "dried_fish"}).json()
+    empty_result = client.post("/fishing/reward/use", json={"item": "dried_fish"}).json()
+
+    assert fish_result["success"] is True
+    assert fish_result["pointsAdded"] == 35
+    assert fish_result["points"] == 35
+    assert fish_result["fishing"]["fishInventory"]["fish"] == 1
+    assert golden_result["success"] is True
+    assert golden_result["pointsAdded"] == 50
+    assert golden_result["points"] == 85
+    assert golden_result["fishing"]["rareFishCount"] == 0
+    assert dried_result["success"] is True
+    assert dried_result["pointsAdded"] == 0
+    assert dried_result["points"] == 85
+    assert dried_result["fishing"]["fishInventory"]["driedFish"] == 0
+    assert dried_result["feedResult"]["status"]["state"] == "eating_hamburger"
+    assert empty_result["success"] is False
+    assert empty_result["points"] == 85
+    assert empty_result["fishing"]["fishInventory"]["driedFish"] == 0
+
+
+def test_fishing_inventory_reward_use_is_account_isolated(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(account_auth, "ACCOUNTS_DATA_FILE", tmp_path / "accounts.json")
+    monkeypatch.setattr(main, "account_book", AccountBook())
+    monkeypatch.setattr(main, "account_runtimes", {})
+
+    client = TestClient(main.app)
+    amanda = client.post("/auth/register", json={"account": "AmandaRewards", "password": "1234"}).json()
+    brian = client.post("/auth/register", json={"account": "BrianRewards", "password": "1234"}).json()
+    amanda_runtime = main.get_runtime(amanda["account_id"])
+    brian_runtime = main.get_runtime(brian["account_id"])
+    amanda_runtime.fishing.data["fishInventory"]["fish"] = 1
+    brian_runtime.fishing.data["fishInventory"]["fish"] = 0
+
+    amanda_result = client.post(
+        "/fishing/reward/use",
+        json={"item": "fish"},
+        headers={"X-Petodo-Account": amanda["account_id"]},
+    ).json()
+    brian_result = client.post(
+        "/fishing/reward/use",
+        json={"item": "fish"},
+        headers={"X-Petodo-Account": brian["account_id"]},
+    ).json()
+
+    assert amanda_result["success"] is True
+    assert amanda_result["points"] == 35
+    assert amanda_result["fishing"]["fishInventory"]["fish"] == 0
+    assert brian_result["success"] is False
+    assert brian_result["points"] == 0

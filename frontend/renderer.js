@@ -5,33 +5,48 @@ const TODO_STORAGE_KEY = 'todoList';
 const CURRENT_TASK_STORAGE_KEY = 'currentTask';
 const TODO_DATE_STORAGE_KEY = 'todoListDate';
 const COUNTDOWN_STORAGE_KEY = 'countdownGoals';
+const USER_PROFILE_STORAGE_KEY = 'petodoUserProfile';
+const ACCOUNT_PROFILE_STORAGE_PREFIX = 'petodoAccountProfile';
+const ACCOUNT_DATA_STORAGE_PREFIX = 'petodoAccountData';
 const DAILY_TASK_EASTER_EGG_SETTING_KEY = 'dailyTaskEasterEggEnabled';
 const INITIAL_TASK_FOCUS_BACKFILL_STORAGE_KEY = 'taskFocusBackfill-2026-05-26-digital-report-v1';
 const LOCAL_TIMER_TICK_MS = 250;
 const DAILY_TODO_CHECK_MS = 60 * 1000;
 const COMPLETION_DIALOG_AUTO_HIDE_MS = 5200;
+const SCROLLBAR_VISIBLE_MS = 800;
 const DEFAULT_IDLE_STATE = 'idle_1';
+const SHORT_REST_SECOND_STAGE_SECONDS = 4 * 60;
+const LONG_REST_SECOND_STAGE_SECONDS = 5 * 60;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+const initialUserProfile = loadUserProfile();
+const initialAccountId = initialUserProfile.isLoggedIn ? initialUserProfile.accountId : '';
 
 const state = {
   page: 'home',
   phase: 'Focus Session',
   remainingSeconds: FOCUS_SECONDS,
   timerMode: 'idle',
+  breakType: null,
+  breakElapsedSeconds: 0,
   timerSnapshotRemainingSeconds: FOCUS_SECONDS,
   timerSnapshotClientTime: Date.now(),
   isRunning: false,
   completedToday: 0,
   totalFocusSeconds: 0,
   focusRecords: [],
-  todoList: loadTodoList(),
-  countdownList: loadCountdownList(),
-  currentTaskId: loadCurrentTaskId(),
-  todoListDate: loadTodoListDate(),
+  journalView: 'day',
+  journalCursorDate: new Date(),
+  journalSelectedDate: new Date(),
+  userProfile: initialUserProfile,
+  todoList: loadTodoList(initialAccountId),
+  countdownList: loadCountdownList(initialAccountId),
+  currentTaskId: loadCurrentTaskId(initialAccountId),
+  todoListDate: loadTodoListDate(initialAccountId),
   pendingTodoRollover: false,
   petState: DEFAULT_IDLE_STATE,
   petReason: '',
-  dailyTaskEasterEggEnabled: loadDailyTaskEasterEggSetting(),
+  dailyTaskEasterEggEnabled: loadDailyTaskEasterEggSetting(initialAccountId),
   hunger: 80,
   mood: '平静',
   points: 0,
@@ -41,11 +56,18 @@ const state = {
   zeroRefreshRequested: false
 };
 
+let lastSyncedAuthLayout = null;
+let lastSyncedAccountId = null;
+
 const PET_MESSAGES = {
   idle_1: '小动物正在陪你',
   idle_2: '小动物正在陪你',
   focus: '小动物正在陪你学习',
   rest: '小动物提醒你休息',
+  rest_1: '小动物提醒你休息',
+  rest_2: '小动物正在短休息',
+  rest_long_start: '长休息开始，小黑也在休息',
+  rest_long_after_5: '长休息进行中，小黑睡熟了',
   happy: '小动物很开心',
   fishing: '小动物正在钓鱼',
   hungry: '小动物有点饿了',
@@ -53,6 +75,7 @@ const PET_MESSAGES = {
   angry: '小动物生气了',
   sleep: '小动物睡着了',
   eating: '小动物正在吃补给',
+  eating_watermelon: '小动物正在吃西瓜',
   eating_hamburger: '小动物正在吃汉堡',
   eating_pizza: '小动物正在吃披萨',
   eating_chicken_leg: '小动物正在吃鸡腿',
@@ -64,6 +87,10 @@ const PET_STATE_TEXT = {
   idle_2: '陪伴中',
   focus: '专注中',
   rest: '休息中',
+  rest_1: '休息中',
+  rest_2: '休息中',
+  rest_long_start: '长休息中',
+  rest_long_after_5: '长休息中',
   happy: '开心',
   fishing: '钓鱼中',
   hungry: '有点饿',
@@ -71,6 +98,7 @@ const PET_STATE_TEXT = {
   angry: '生气了',
   sleep: '睡着了',
   eating: '进食中',
+  eating_watermelon: '吃西瓜中',
   eating_hamburger: '吃汉堡中',
   eating_pizza: '吃披萨中',
   eating_chicken_leg: '吃鸡腿中',
@@ -82,22 +110,45 @@ const PET_IMAGES = {
   idle_2: 'assets/pet/luoxiaohei/gif/luoxiaohei-idle.gif',
   focus: 'assets/pet/luoxiaohei/gif/luoxiaohei-focus.gif',
   rest: 'assets/pet/luoxiaohei/gif/luoxiaohei-rest.gif',
-  happy: 'assets/pet/luoxiaohei/happy/happy_01.png',
+  rest_1: 'assets/pet/luoxiaohei/gif/luoxiaohei-rest.gif',
+  rest_2: 'assets/pet/luoxiaohei/gif/luoxiaohei-rest-2.gif',
+  rest_long_start: 'assets/pet/luoxiaohei/gif/luoxiaohei-rest-long-start.gif',
+  rest_long_after_5: 'assets/pet/luoxiaohei/gif/luoxiaohei-rest-long-after-5.gif',
+  happy: 'assets/pet/luoxiaohei/img/happy/luoxiaohei-happy-01.png',
   fishing: 'assets/pet/luoxiaohei/gif/luoxiaohei-fishing.gif',
   hungry: 'assets/pet/luoxiaohei/gif/luoxiaohei-hungry.webp',
-  hungry_heavy: 'assets/pet/luoxiaohei/gif/luoxiaohei-hungry-heavy.gif',
+  hungry_heavy: 'assets/pet/luoxiaohei/gif/luoxiaohei-hungry-heavy.webp',
   angry: 'assets/pet/luoxiaohei/gif/luoxiaohei-angry.gif',
   sleep: 'assets/pet/luoxiaohei/gif/luoxiaohei-sleep.gif',
   eating: 'assets/pet/luoxiaohei/gif/luoxiaohei-eating.gif',
-  eating_hamburger: 'assets/pet/luoxiaohei/gif/luoxiaohei-eating-hamburger.png',
+  eating_watermelon: 'assets/pet/luoxiaohei/gif/luoxiaohei-eating-watermelon.gif',
+  eating_hamburger: 'assets/pet/luoxiaohei/img/eating/luoxiaohei-eating-hamburger.png',
   eating_pizza: 'assets/pet/luoxiaohei/gif/luoxiaohei-eating-pizza.gif',
-  eating_chicken_leg: 'assets/pet/luoxiaohei/gif/luoxiaohei-eating-chicken-leg.png',
+  eating_chicken_leg: 'assets/pet/luoxiaohei/img/eating/luoxiaohei-eating-chicken-leg.png',
   finished_eating: 'assets/pet/luoxiaohei/gif/luoxiaohei-finished-eating.gif'
 };
 
 const navItems = document.querySelectorAll('.nav-item');
 const pages = document.querySelectorAll('[data-page-panel]');
 document.querySelector('#page-home .countdown-header-actions')?.remove();
+const loginScreen = document.querySelector('#loginScreen');
+const loginForm = document.querySelector('#loginForm');
+const loginAccountInput = document.querySelector('#loginAccountInput');
+const loginPasswordInput = document.querySelector('#loginPasswordInput');
+const registerButton = document.querySelector('#registerButton');
+const userGreetingText = document.querySelector('#userGreetingText');
+const windowMinimizeButton = document.querySelector('#windowMinimizeButton');
+const windowMaximizeButton = document.querySelector('#windowMaximizeButton');
+const windowCloseButton = document.querySelector('#windowCloseButton');
+const profileNameInput = document.querySelector('#profileNameInput');
+const profileAvatarInput = document.querySelector('#profileAvatarInput');
+const profileAvatarButton = document.querySelector('#profileAvatarButton');
+const chooseAvatarButton = document.querySelector('#chooseAvatarButton');
+const saveProfileButton = document.querySelector('#saveProfileButton');
+const logoutButton = document.querySelector('#logoutButton');
+const avatarButtons = document.querySelectorAll('.avatar-button');
+const avatarImages = document.querySelectorAll('[data-user-avatar]');
+const avatarFallbacks = document.querySelectorAll('[data-avatar-fallback]');
 const toast = document.querySelector('#toast');
 const companionImage = document.querySelector('#companionImage');
 const companionCard = document.querySelector('.companion-card');
@@ -124,11 +175,29 @@ const countdownDateInput = document.querySelector('#countdownDateInput');
 const countdownNoteInput = document.querySelector('#countdownNoteInput');
 const countdownListElement = document.querySelector('#countdownList');
 const countdownEmptyState = document.querySelector('#countdownEmptyState');
+const journalViewContent = document.querySelector('#journalViewContent');
 const journalDayList = document.querySelector('#journalDayList');
+const journalViewButtons = document.querySelectorAll('[data-journal-view]');
+const journalPrevButton = document.querySelector('#journalPrevButton');
+const journalNextButton = document.querySelector('#journalNextButton');
+const journalRangeText = document.querySelector('#journalRangeText');
+const journalStartTimeText = document.querySelector('#journalStartTimeText');
+const journalPeriodTimeText = document.querySelector('#journalPeriodTimeText');
+const journalPeriodCountText = document.querySelector('#journalPeriodCountText');
+const journalBreakCountText = document.querySelector('#journalBreakCountText');
+const journalPeriodChart = document.querySelector('#journalPeriodChart');
+const journalChartEmptyState = document.querySelector('#journalChartEmptyState');
+const journalPeriodSummary = document.querySelector('#journalPeriodSummary');
+const journalSummaryScope = document.querySelector('#journalSummaryScope');
+const journalDetailScope = document.querySelector('#journalDetailScope');
+const journalDetailTotalText = document.querySelector('#journalDetailTotalText');
+const journalRankSummary = document.querySelector('#journalRankSummary');
+const journalRankList = document.querySelector('#journalRankList');
 const journalRecentList = document.querySelector('#journalRecentList');
 const journalEmptyState = document.querySelector('#journalEmptyState');
 const completionDialog = document.querySelector('#completionDialog');
 const completionCloseButton = document.querySelector('#completionCloseButton');
+const completionContinueButton = document.querySelector('#completionContinueButton');
 const dailyTaskEasterEggDialog = document.querySelector('#dailyTaskEasterEggDialog');
 const dailyTaskEasterEggImage = document.querySelector('#dailyTaskEasterEggImage');
 const dailyTaskEasterEggCloseButton = document.querySelector('#dailyTaskEasterEggCloseButton');
@@ -139,6 +208,7 @@ const todoRolloverCarryButton = document.querySelector('#todoRolloverCarryButton
 const todoRolloverClearButton = document.querySelector('#todoRolloverClearButton');
 let appStatusPollTimer = null;
 let dailyTodoCheckTimer = null;
+let completionContinueBusy = false;
 
 const timeDisplays = [
   document.querySelector('#homeTimeText')
@@ -170,9 +240,94 @@ const resetButtons = [
   document.querySelector('#homeResetButton')
 ];
 
-function loadTodoList() {
+function setupOnDemandScrollbars() {
+  document.querySelectorAll('.content, .companion-panel').forEach((scrollRegion) => {
+    let hideScrollbarTimer = 0;
+
+    scrollRegion.addEventListener('wheel', () => {
+      scrollRegion.classList.add('is-scrolling');
+      window.clearTimeout(hideScrollbarTimer);
+      hideScrollbarTimer = window.setTimeout(() => {
+        scrollRegion.classList.remove('is-scrolling');
+      }, SCROLLBAR_VISIBLE_MS);
+    }, { passive: true });
+  });
+}
+
+function loadUserProfile() {
   try {
-    const saved = JSON.parse(localStorage.getItem(TODO_STORAGE_KEY) || '[]');
+    const saved = JSON.parse(localStorage.getItem(USER_PROFILE_STORAGE_KEY) || '{}');
+    return {
+      isLoggedIn: Boolean(saved.isLoggedIn),
+      accountId: typeof saved.accountId === 'string' ? saved.accountId : '',
+      accountName: typeof saved.accountName === 'string' ? saved.accountName.trim() : '',
+      name: typeof saved.name === 'string' ? saved.name.trim() : '',
+      avatar: typeof saved.avatar === 'string' ? saved.avatar : ''
+    };
+  } catch {
+    return {
+      isLoggedIn: false,
+      accountId: '',
+      accountName: '',
+      name: '',
+      avatar: ''
+    };
+  }
+}
+
+function saveUserProfile() {
+  localStorage.setItem(USER_PROFILE_STORAGE_KEY, JSON.stringify(state.userProfile));
+  saveAccountProfile(state.userProfile);
+}
+
+function getAccountProfileKey(accountId) {
+  return `${ACCOUNT_PROFILE_STORAGE_PREFIX}:${accountId}`;
+}
+
+function getAccountDataKey(baseKey, accountId = state?.userProfile?.accountId) {
+  return accountId ? `${ACCOUNT_DATA_STORAGE_PREFIX}:${accountId}:${baseKey}` : baseKey;
+}
+
+function loadAccountProfile(accountId) {
+  if (!accountId) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(localStorage.getItem(getAccountProfileKey(accountId)) || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveAccountProfile(profile = state.userProfile) {
+  if (!profile.accountId) {
+    return;
+  }
+
+  localStorage.setItem(getAccountProfileKey(profile.accountId), JSON.stringify({
+    accountId: profile.accountId,
+    accountName: profile.accountName || '',
+    name: profile.name || '',
+    avatar: profile.avatar || ''
+  }));
+}
+
+function getProfileName() {
+  return state.userProfile.name || state.userProfile.accountName || 'Petodo';
+}
+
+function getProfileInitial() {
+  return getProfileName().trim().charAt(0).toUpperCase() || 'P';
+}
+
+function loadTodoList(accountId = state?.userProfile?.accountId) {
+  if (!accountId) {
+    return [];
+  }
+
+  try {
+    const saved = JSON.parse(localStorage.getItem(getAccountDataKey(TODO_STORAGE_KEY, accountId)) || '[]');
     if (!Array.isArray(saved)) {
       return [];
     }
@@ -207,9 +362,13 @@ function isValidDateKey(value) {
     && date.getUTCDate() === day;
 }
 
-function loadCountdownList() {
+function loadCountdownList(accountId = state?.userProfile?.accountId) {
+  if (!accountId) {
+    return [];
+  }
+
   try {
-    const saved = JSON.parse(localStorage.getItem(COUNTDOWN_STORAGE_KEY) || '[]');
+    const saved = JSON.parse(localStorage.getItem(getAccountDataKey(COUNTDOWN_STORAGE_KEY, accountId)) || '[]');
     if (!Array.isArray(saved)) {
       return [];
     }
@@ -228,22 +387,35 @@ function loadCountdownList() {
   }
 }
 
-function loadCurrentTaskId() {
-  return localStorage.getItem(CURRENT_TASK_STORAGE_KEY) || '';
+function loadCurrentTaskId(accountId = state?.userProfile?.accountId) {
+  if (!accountId) {
+    return '';
+  }
+  return localStorage.getItem(getAccountDataKey(CURRENT_TASK_STORAGE_KEY, accountId)) || '';
 }
 
-function loadTodoListDate() {
-  return localStorage.getItem(TODO_DATE_STORAGE_KEY) || '';
+function loadTodoListDate(accountId = state?.userProfile?.accountId) {
+  if (!accountId) {
+    return '';
+  }
+  return localStorage.getItem(getAccountDataKey(TODO_DATE_STORAGE_KEY, accountId)) || '';
 }
 
-function loadDailyTaskEasterEggSetting() {
-  return localStorage.getItem(DAILY_TASK_EASTER_EGG_SETTING_KEY) !== 'false';
+function loadDailyTaskEasterEggSetting(accountId = state?.userProfile?.accountId) {
+  if (!accountId) {
+    return true;
+  }
+  return localStorage.getItem(getAccountDataKey(DAILY_TASK_EASTER_EGG_SETTING_KEY, accountId)) !== 'false';
 }
 
 function saveTodoState() {
-  localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(state.todoList));
-  localStorage.setItem(CURRENT_TASK_STORAGE_KEY, state.currentTaskId);
-  localStorage.setItem(TODO_DATE_STORAGE_KEY, state.todoListDate || getTodayKey());
+  if (!state.userProfile.accountId) {
+    return;
+  }
+
+  localStorage.setItem(getAccountDataKey(TODO_STORAGE_KEY), JSON.stringify(state.todoList));
+  localStorage.setItem(getAccountDataKey(CURRENT_TASK_STORAGE_KEY), state.currentTaskId);
+  localStorage.setItem(getAccountDataKey(TODO_DATE_STORAGE_KEY), state.todoListDate || getTodayKey());
 
   if (window.petodo?.saveTodoState) {
     window.petodo.saveTodoState({
@@ -265,9 +437,11 @@ function applyTodoState(todoState = {}) {
     state.currentTaskId = '';
   }
 
-  localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(state.todoList));
-  localStorage.setItem(CURRENT_TASK_STORAGE_KEY, state.currentTaskId);
-  localStorage.setItem(TODO_DATE_STORAGE_KEY, state.todoListDate || getTodayKey());
+  if (state.userProfile.accountId) {
+    localStorage.setItem(getAccountDataKey(TODO_STORAGE_KEY), JSON.stringify(state.todoList));
+    localStorage.setItem(getAccountDataKey(CURRENT_TASK_STORAGE_KEY), state.currentTaskId);
+    localStorage.setItem(getAccountDataKey(TODO_DATE_STORAGE_KEY), state.todoListDate || getTodayKey());
+  }
 }
 
 async function loadTodoState() {
@@ -277,61 +451,29 @@ async function loadTodoState() {
     todoListDate: loadTodoListDate()
   };
 
-  if (!window.petodo?.loadTodoState || !window.petodo?.saveTodoState) {
-    applyTodoState(legacyState);
-    return legacyState;
+  applyTodoState(legacyState);
+
+  if (window.petodo?.saveTodoState) {
+    window.petodo.saveTodoState(legacyState).catch((error) => {
+      console.warn('Failed to sync account todo state to desktop storage:', error);
+    });
   }
 
-  try {
-    const savedState = await window.petodo.loadTodoState();
-    const hasSavedTodos = Array.isArray(savedState?.todoList) && savedState.todoList.length > 0;
-    const hasSavedDate = Boolean(savedState?.todoListDate);
-    const hasLegacyTodos = legacyState.todoList.length > 0;
-
-    if (!hasSavedTodos && !hasSavedDate && hasLegacyTodos) {
-      const migratedState = await window.petodo.saveTodoState(legacyState);
-      applyTodoState(migratedState);
-      return migratedState;
-    }
-
-    applyTodoState(savedState);
-    return savedState;
-  } catch (error) {
-    console.warn('Failed to load todo state from desktop storage:', error);
-    applyTodoState(legacyState);
-    return legacyState;
-  }
+  return legacyState;
 }
 
 async function loadCountdownState() {
   const legacyGoals = loadCountdownList();
-
-  if (!window.petodo?.loadCountdownGoals || !window.petodo?.saveCountdownGoals) {
-    state.countdownList = legacyGoals;
-    return legacyGoals;
-  }
-
-  try {
-    const savedGoals = await window.petodo.loadCountdownGoals();
-    const normalizedSavedGoals = Array.isArray(savedGoals) ? savedGoals : [];
-
-    if (normalizedSavedGoals.length === 0 && legacyGoals.length > 0) {
-      const migratedGoals = await window.petodo.saveCountdownGoals(legacyGoals);
-      state.countdownList = Array.isArray(migratedGoals) ? migratedGoals : legacyGoals;
-    } else {
-      state.countdownList = normalizedSavedGoals;
-    }
-  } catch (error) {
-    console.warn('Failed to load countdown goals from desktop storage:', error);
-    state.countdownList = legacyGoals;
-  }
-
-  localStorage.setItem(COUNTDOWN_STORAGE_KEY, JSON.stringify(state.countdownList));
+  state.countdownList = legacyGoals;
   return state.countdownList;
 }
 
 async function saveCountdownState() {
-  localStorage.setItem(COUNTDOWN_STORAGE_KEY, JSON.stringify(state.countdownList));
+  if (!state.userProfile.accountId) {
+    return state.countdownList;
+  }
+
+  localStorage.setItem(getAccountDataKey(COUNTDOWN_STORAGE_KEY), JSON.stringify(state.countdownList));
 
   if (!window.petodo?.saveCountdownGoals) {
     return state.countdownList;
@@ -340,7 +482,7 @@ async function saveCountdownState() {
   try {
     const savedGoals = await window.petodo.saveCountdownGoals(state.countdownList);
     state.countdownList = Array.isArray(savedGoals) ? savedGoals : state.countdownList;
-    localStorage.setItem(COUNTDOWN_STORAGE_KEY, JSON.stringify(state.countdownList));
+    localStorage.setItem(getAccountDataKey(COUNTDOWN_STORAGE_KEY), JSON.stringify(state.countdownList));
   } catch (error) {
     console.warn('Failed to save countdown goals to desktop storage:', error);
   }
@@ -349,7 +491,10 @@ async function saveCountdownState() {
 }
 
 function saveDailyTaskEasterEggSetting() {
-  localStorage.setItem(DAILY_TASK_EASTER_EGG_SETTING_KEY, String(state.dailyTaskEasterEggEnabled));
+  if (!state.userProfile.accountId) {
+    return;
+  }
+  localStorage.setItem(getAccountDataKey(DAILY_TASK_EASTER_EGG_SETTING_KEY), String(state.dailyTaskEasterEggEnabled));
 }
 
 function createTaskId() {
@@ -398,7 +543,8 @@ function syncTaskFocusProgress() {
     }
   });
 
-  if (!localStorage.getItem(INITIAL_TASK_FOCUS_BACKFILL_STORAGE_KEY)) {
+  const backfillKey = getAccountDataKey(INITIAL_TASK_FOCUS_BACKFILL_STORAGE_KEY);
+  if (!localStorage.getItem(backfillKey)) {
     const reportTask = getCurrentTask();
     if (reportTask?.name === '数电实验报告') {
       state.focusRecords
@@ -406,7 +552,7 @@ function syncTaskFocusProgress() {
         .forEach((record) => {
           changed = addFocusRecordToTask(reportTask, record) || changed;
         });
-      localStorage.setItem(INITIAL_TASK_FOCUS_BACKFILL_STORAGE_KEY, 'true');
+      localStorage.setItem(backfillKey, 'true');
     }
   }
 
@@ -448,6 +594,14 @@ function showToast(message) {
   }, 1800);
 }
 
+function setCompletionContinueBusy(isBusy) {
+  completionContinueBusy = isBusy;
+  if (completionContinueButton) {
+    completionContinueButton.disabled = isBusy;
+    completionContinueButton.textContent = isBusy ? '正在开始...' : '继续专注';
+  }
+}
+
 function hideCompletionDialog() {
   if (!completionDialog) {
     return;
@@ -465,6 +619,7 @@ function showCompletionDialog() {
     return;
   }
 
+  setCompletionContinueBusy(false);
   window.clearTimeout(showCompletionDialog.autoHideTimer);
   window.clearTimeout(hideCompletionDialog.hideTimer);
   completionDialog.hidden = false;
@@ -497,7 +652,7 @@ function showDailyTaskEasterEggDialog() {
   window.clearTimeout(hideDailyTaskEasterEggDialog.hideTimer);
   dailyTaskEasterEggDialog.hidden = false;
   dailyTaskEasterEggDialog.classList.remove('is-visible');
-  dailyTaskEasterEggImage.src = `assets/pet/luoxiaohei/gif/task-complete-fish.webp?restart=${Date.now()}`;
+  dailyTaskEasterEggImage.src = `assets/ui/rewards/luoxiaohei-task-complete-fish.webp?restart=${Date.now()}`;
   void dailyTaskEasterEggDialog.offsetWidth;
   dailyTaskEasterEggDialog.classList.add('is-visible');
 }
@@ -557,6 +712,8 @@ function handleFocusCompletion(timerStatus = {}) {
 
 function setPage(pageName) {
   state.page = pageName;
+  document.body.classList.toggle('is-journal-page', pageName === 'journal');
+  document.body.classList.toggle('is-full-page', ['journal', 'settings'].includes(pageName));
 
   navItems.forEach((item) => {
     item.classList.toggle('is-active', item.dataset.page === pageName);
@@ -565,6 +722,274 @@ function setPage(pageName) {
   pages.forEach((page) => {
     page.classList.toggle('is-active', page.dataset.pagePanel === pageName);
   });
+}
+
+function syncMainWindowAuthLayout(isLoggedIn) {
+  if (lastSyncedAuthLayout === isLoggedIn) {
+    return;
+  }
+
+  lastSyncedAuthLayout = isLoggedIn;
+  const setAuthLayout = window.petodo?.setMainWindowAuthLayout;
+
+  if (typeof setAuthLayout !== 'function') {
+    return;
+  }
+
+  setAuthLayout(isLoggedIn).catch(() => {
+    lastSyncedAuthLayout = null;
+  });
+}
+
+function getActiveAccountId() {
+  return state.userProfile.isLoggedIn && state.userProfile.accountId
+    ? state.userProfile.accountId
+    : '';
+}
+
+async function syncCurrentAccountId(options = {}) {
+  const accountId = getActiveAccountId();
+  if (options.force !== true && lastSyncedAccountId === accountId) {
+    return accountId;
+  }
+
+  lastSyncedAccountId = accountId;
+  const setCurrentAccountId = window.petodo?.setCurrentAccountId;
+
+  if (typeof setCurrentAccountId !== 'function') {
+    return accountId;
+  }
+
+  try {
+    return await setCurrentAccountId(accountId);
+  } catch (error) {
+    lastSyncedAccountId = null;
+    console.warn('Failed to sync current account for pet window:', error);
+    return accountId;
+  }
+}
+
+function renderProfile() {
+  const isLoggedIn = Boolean(state.userProfile.isLoggedIn);
+  const name = getProfileName();
+  document.documentElement.classList.toggle('is-authenticated', isLoggedIn);
+  document.body.classList.toggle('is-authenticated', isLoggedIn);
+  loginScreen.hidden = isLoggedIn;
+  syncMainWindowAuthLayout(isLoggedIn);
+  syncCurrentAccountId();
+
+  document.querySelector('#homeTitle').textContent = `Hi，${name}！`;
+
+  if (userGreetingText) {
+    userGreetingText.textContent = `Hi, ${name}!`;
+  }
+
+  if (profileNameInput && document.activeElement !== profileNameInput) {
+    profileNameInput.value = state.userProfile.name || '';
+  }
+
+  if (loginAccountInput && !isLoggedIn && document.activeElement !== loginAccountInput) {
+    loginAccountInput.value = state.userProfile.accountName || '';
+  }
+
+  if (loginPasswordInput && !isLoggedIn && document.activeElement !== loginPasswordInput) {
+    loginPasswordInput.value = '';
+  }
+
+  const initial = getProfileInitial();
+  avatarFallbacks.forEach((element) => {
+    element.textContent = initial;
+    element.hidden = Boolean(state.userProfile.avatar);
+  });
+
+  avatarImages.forEach((image) => {
+    image.hidden = !state.userProfile.avatar;
+    if (state.userProfile.avatar) {
+      image.src = state.userProfile.avatar;
+    } else {
+      image.removeAttribute('src');
+    }
+  });
+}
+
+async function loadAccountSessionData() {
+  state.todoList = loadTodoList();
+  state.currentTaskId = loadCurrentTaskId();
+  state.todoListDate = loadTodoListDate();
+  state.countdownList = loadCountdownList();
+  state.dailyTaskEasterEggEnabled = loadDailyTaskEasterEggSetting();
+
+  await loadTodoState();
+  await loadCountdownState();
+
+  if (state.currentTaskId && !getCurrentTask()) {
+    state.currentTaskId = '';
+    saveTodoState();
+  }
+}
+
+function resetSessionData() {
+  stopTimer();
+  state.remainingSeconds = FOCUS_SECONDS;
+  state.timerMode = 'idle';
+  state.phase = 'Focus Session';
+  state.isRunning = false;
+  state.completedToday = 0;
+  state.totalFocusSeconds = 0;
+  state.focusRecords = [];
+  state.todoList = [];
+  state.countdownList = [];
+  state.currentTaskId = '';
+  state.todoListDate = '';
+  state.petState = DEFAULT_IDLE_STATE;
+  state.petReason = '';
+  state.hunger = 80;
+  state.mood = '平静';
+  state.points = 0;
+  state.hasLoadedAppStatus = false;
+  state.lastCompletedFocusKey = '';
+  state.zeroRefreshRequested = false;
+}
+
+async function applyAuthenticatedAccount(account) {
+  const savedProfile = loadAccountProfile(account.account_id);
+  state.userProfile = {
+    isLoggedIn: true,
+    accountId: account.account_id,
+    accountName: account.account_name,
+    name: savedProfile.name || account.display_name || account.account_name,
+    avatar: savedProfile.avatar || ''
+  };
+  saveUserProfile();
+  await syncCurrentAccountId({ force: true });
+  await loadAccountSessionData();
+  setPage('home');
+  renderProfile();
+  render();
+  await refreshAppStatus();
+  checkTodoRollover();
+}
+
+async function authenticateUser(endpoint, successMessage) {
+  const account = loginAccountInput.value.trim();
+  const password = loginPasswordInput.value;
+
+  if (!account) {
+    showToast('请先输入账号');
+    loginAccountInput.focus();
+    return;
+  }
+
+  if (!password) {
+    showToast('请先输入密码');
+    loginPasswordInput.focus();
+    return;
+  }
+
+  try {
+    const accountProfile = await requestBackend(endpoint, {
+      method: 'POST',
+      body: JSON.stringify({
+        account,
+        password,
+        display_name: account
+      }),
+      skipAuth: true
+    });
+    await applyAuthenticatedAccount(accountProfile);
+    loginPasswordInput.value = '';
+    showToast(successMessage(accountProfile));
+  } catch (error) {
+    showToast(error.message || '账号验证失败');
+  }
+}
+
+function loginUser(event) {
+  event.preventDefault();
+  authenticateUser('/auth/login', (account) => `欢迎回来，${account.display_name}`);
+}
+
+function registerUser() {
+  authenticateUser('/auth/register', (account) => `已创建账号，${account.display_name}`);
+}
+
+async function saveProfileFromSettings() {
+  const name = profileNameInput.value.trim();
+
+  if (!name) {
+    showToast('昵称不能为空');
+    profileNameInput.focus();
+    return;
+  }
+
+  state.userProfile = {
+    ...state.userProfile,
+    isLoggedIn: true,
+    name
+  };
+  saveUserProfile();
+  renderProfile();
+
+  try {
+    const updated = await requestBackend('/auth/profile', {
+      method: 'POST',
+      body: JSON.stringify({ display_name: name })
+    });
+    state.userProfile = {
+      ...state.userProfile,
+      accountName: updated.account_name,
+      name: updated.display_name
+    };
+    saveUserProfile();
+    renderProfile();
+    showToast('个人资料已保存');
+  } catch (error) {
+    showToast(error.message || '个人资料已保存在本地');
+  }
+}
+
+function logoutUser() {
+  saveUserProfile();
+  state.userProfile = {
+    ...state.userProfile,
+    isLoggedIn: false
+  };
+  saveUserProfile();
+  syncCurrentAccountId({ force: true });
+  resetSessionData();
+  setPage('home');
+  renderProfile();
+  render();
+}
+
+function chooseAvatar() {
+  profileAvatarInput?.click();
+}
+
+function updateAvatarFromFile(event) {
+  const file = event.target.files?.[0];
+  if (!file) {
+    return;
+  }
+
+  if (!file.type.startsWith('image/')) {
+    showToast('请选择图片文件');
+    event.target.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.addEventListener('load', () => {
+    state.userProfile = {
+      ...state.userProfile,
+      isLoggedIn: true,
+      avatar: String(reader.result || '')
+    };
+    saveUserProfile();
+    renderProfile();
+    showToast('头像已更新');
+  });
+  reader.readAsDataURL(file);
 }
 
 function updateTimerView() {
@@ -588,7 +1013,10 @@ function updateTimerView() {
     element.textContent = currentTaskName;
   });
 
-  document.querySelector('#journalTodayText').textContent = String(state.completedToday);
+  const journalTodayText = document.querySelector('#journalTodayText');
+  if (journalTodayText) {
+    journalTodayText.textContent = String(state.completedToday);
+  }
 }
 
 function getHungerGuidance() {
@@ -628,9 +1056,30 @@ function getHungerGuidance() {
   };
 }
 
+function resolveRestDisplayState() {
+  if (state.breakType === 'long') {
+    return state.breakElapsedSeconds >= LONG_REST_SECOND_STAGE_SECONDS
+      ? 'rest_long_after_5'
+      : 'rest_long_start';
+  }
+
+  return state.breakElapsedSeconds >= SHORT_REST_SECOND_STAGE_SECONDS
+    ? 'rest_2'
+    : 'rest_1';
+}
+
+function getDisplayPetState() {
+  if (state.petState === 'rest' && state.timerMode === 'break') {
+    return resolveRestDisplayState();
+  }
+
+  return state.petState;
+}
+
 function updateCompanionView() {
-  const message = state.petReason || PET_MESSAGES[state.petState] || PET_MESSAGES[DEFAULT_IDLE_STATE];
-  const petText = PET_STATE_TEXT[state.petState] || PET_STATE_TEXT[DEFAULT_IDLE_STATE];
+  const displayPetState = getDisplayPetState();
+  const message = state.petReason || PET_MESSAGES[displayPetState] || PET_MESSAGES[DEFAULT_IDLE_STATE];
+  const petText = PET_STATE_TEXT[displayPetState] || PET_STATE_TEXT[DEFAULT_IDLE_STATE];
   const guidance = getHungerGuidance();
 
   document.querySelector('#homeMessageText').textContent = message;
@@ -639,8 +1088,11 @@ function updateCompanionView() {
   hungerText.textContent = `${state.hunger}%`;
   document.querySelector('#moodText').textContent = state.mood;
   document.querySelector('#pointsText').textContent = String(state.points);
-  document.querySelector('#journalPointsText').textContent = String(state.points);
-  companionImage.src = PET_IMAGES[state.petState] || PET_IMAGES[DEFAULT_IDLE_STATE];
+  const journalPointsText = document.querySelector('#journalPointsText');
+  if (journalPointsText) {
+    journalPointsText.textContent = String(state.points);
+  }
+  companionImage.src = PET_IMAGES[displayPetState] || PET_IMAGES[DEFAULT_IDLE_STATE];
   companionCard.dataset.hungerTone = guidance.tone;
   hungerGuidance.dataset.tone = guidance.tone;
   hungerGuidanceTitle.textContent = guidance.title;
@@ -713,7 +1165,7 @@ function applyAppStatus(data = {}) {
   if (timerStatus.mode === 'focus') {
     state.phase = 'Focus Session';
   } else if (timerStatus.mode === 'break') {
-    state.phase = 'Break Time';
+    state.phase = timerStatus.break_type === 'long' ? 'Long Break' : 'Break Time';
   } else if (timerStatus.mode === 'paused') {
     state.phase = 'Paused';
   } else if (timerStatus.mode === 'idle') {
@@ -725,28 +1177,55 @@ function applyAppStatus(data = {}) {
   }
 
   state.timerMode = timerStatus.mode || state.timerMode;
+  if (timerStatus.mode === 'break') {
+    state.breakType = timerStatus.break_type || null;
+    if (Number.isFinite(timerStatus.break_elapsed_seconds)) {
+      state.breakElapsedSeconds = Math.max(0, timerStatus.break_elapsed_seconds);
+    } else if (Number.isFinite(timerStatus.break_seconds) && Number.isFinite(timerStatus.remaining_seconds)) {
+      state.breakElapsedSeconds = Math.max(0, timerStatus.break_seconds - timerStatus.remaining_seconds);
+    }
+  } else if (timerStatus.mode && timerStatus.mode !== 'paused') {
+    state.breakType = null;
+    state.breakElapsedSeconds = 0;
+  }
   syncLocalTimerSnapshot(timerStatus);
   state.hasLoadedAppStatus = true;
   maybeShowPendingTodoRollover();
 }
 
 async function requestBackend(path, options = {}) {
+  const { skipAuth = false, ...fetchOptions } = options;
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(fetchOptions.headers || {})
+  };
+
+  if (!skipAuth && state.userProfile.isLoggedIn && state.userProfile.accountId && !headers['X-Petodo-Account']) {
+    headers['X-Petodo-Account'] = state.userProfile.accountId;
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    },
-    ...options
+    headers,
+    ...fetchOptions
   });
 
   if (!response.ok) {
-    throw new Error('请求失败');
+    let message = '请求失败';
+    try {
+      const errorBody = await response.json();
+      message = errorBody.detail || message;
+    } catch {}
+    throw new Error(message);
   }
 
   return response.json();
 }
 
 async function refreshAppStatus({ silent = true } = {}) {
+  if (!state.userProfile.isLoggedIn || !state.userProfile.accountId) {
+    return null;
+  }
+
   try {
     const data = await requestBackend('/app/status');
     applyAppStatus(data);
@@ -932,6 +1411,10 @@ function maybeShowPendingTodoRollover() {
 }
 
 function checkTodoRollover() {
+  if (!state.userProfile.isLoggedIn || !state.userProfile.accountId) {
+    return;
+  }
+
   const today = getTodayKey();
 
   if (!state.todoListDate) {
@@ -992,6 +1475,37 @@ function addDays(date, amount) {
   return next;
 }
 
+function addMonths(date, amount) {
+  const next = new Date(date);
+  next.setMonth(next.getMonth() + amount);
+  return next;
+}
+
+function addYears(date, amount) {
+  const next = new Date(date);
+  next.setFullYear(next.getFullYear() + amount);
+  return next;
+}
+
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function startOfWeek(date) {
+  const start = startOfDay(date);
+  const day = start.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  return addDays(start, mondayOffset);
+}
+
+function startOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function startOfYear(date) {
+  return new Date(date.getFullYear(), 0, 1);
+}
+
 function getRecordsByDate() {
   return state.focusRecords.reduce((map, record) => {
     const key = record.completed_date;
@@ -1037,6 +1551,139 @@ function calculateStudyStreak() {
   return streak;
 }
 
+function getRecordCompletedDate(record) {
+  const completedAt = Number(record.completed_at);
+  if (Number.isFinite(completedAt)) {
+    return new Date(completedAt * 1000);
+  }
+
+  if (record.completed_date) {
+    return new Date(`${record.completed_date}T12:00:00`);
+  }
+
+  return null;
+}
+
+function getJournalPeriod() {
+  const cursor = state.journalCursorDate;
+
+  if (state.journalView === 'week') {
+    const start = startOfWeek(cursor);
+    const end = addDays(start, 7);
+    return {
+      start,
+      end,
+      title: `${start.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })} - ${addDays(end, -1).toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })}`,
+      scope: '按周'
+    };
+  }
+
+  if (state.journalView === 'month') {
+    const start = startOfMonth(cursor);
+    const end = addMonths(start, 1);
+    return {
+      start,
+      end,
+      title: start.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long' }),
+      scope: '按月'
+    };
+  }
+
+  if (state.journalView === 'year') {
+    const start = startOfYear(cursor);
+    const end = addYears(start, 1);
+    return {
+      start,
+      end,
+      title: `${start.getFullYear()}年`,
+      scope: '按年'
+    };
+  }
+
+  const start = startOfDay(cursor);
+  const end = addDays(start, 1);
+  return {
+    start,
+    end,
+    title: start.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' }),
+    scope: '按天'
+  };
+}
+
+function getJournalPeriodRecords(period = getJournalPeriod()) {
+  return state.focusRecords
+    .map((record) => ({
+      ...record,
+      completedDate: getRecordCompletedDate(record)
+    }))
+    .filter((record) => (
+      record.completedDate &&
+      record.completedDate >= period.start &&
+      record.completedDate < period.end
+    ))
+    .sort((a, b) => Number(a.completed_at || 0) - Number(b.completed_at || 0));
+}
+
+function sumFocusSeconds(records) {
+  return records.reduce((total, record) => total + (Number(record.focus_seconds) || 0), 0);
+}
+
+function formatClockTime(date) {
+  if (!date) {
+    return '--:--';
+  }
+
+  return date.toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function buildJournalBuckets(period, records) {
+  if (state.journalView === 'week') {
+    return Array.from({ length: 7 }, (_, index) => {
+      const start = addDays(period.start, index);
+      const end = addDays(start, 1);
+      return {
+        label: start.toLocaleDateString('zh-CN', { weekday: 'short' }).replace('周', ''),
+        seconds: sumFocusSeconds(records.filter((record) => record.completedDate >= start && record.completedDate < end))
+      };
+    });
+  }
+
+  if (state.journalView === 'month') {
+    const dayCount = Math.round((period.end - period.start) / MS_PER_DAY);
+    return Array.from({ length: dayCount }, (_, index) => {
+      const start = addDays(period.start, index);
+      const end = addDays(start, 1);
+      return {
+        label: String(index + 1),
+        seconds: sumFocusSeconds(records.filter((record) => record.completedDate >= start && record.completedDate < end))
+      };
+    });
+  }
+
+  if (state.journalView === 'year') {
+    return Array.from({ length: 12 }, (_, index) => {
+      const start = new Date(period.start.getFullYear(), index, 1);
+      const end = addMonths(start, 1);
+      return {
+        label: `${index + 1}月`,
+        seconds: sumFocusSeconds(records.filter((record) => record.completedDate >= start && record.completedDate < end))
+      };
+    });
+  }
+
+  return Array.from({ length: 24 }, (_, hour) => {
+    const start = new Date(period.start.getFullYear(), period.start.getMonth(), period.start.getDate(), hour);
+    const end = new Date(period.start.getFullYear(), period.start.getMonth(), period.start.getDate(), hour + 1);
+    return {
+      label: String(hour).padStart(2, '0'),
+      seconds: sumFocusSeconds(records.filter((record) => record.completedDate >= start && record.completedDate < end))
+    };
+  });
+}
+
 function formatRecordTime(record) {
   const completedAt = Number(record.completed_at);
   if (!Number.isFinite(completedAt)) {
@@ -1063,46 +1710,393 @@ function formatRecordTime(record) {
   return `${recordKey} ${timeText}`;
 }
 
-function renderJournalDays() {
-  const days = buildRecentSevenDays();
-  const maxMinutes = Math.max(1, ...days.map((day) => day.minutes));
-
-  journalDayList.innerHTML = days
-    .map((day) => {
-      const width = Math.round((day.minutes / maxMinutes) * 100);
-      return `
-        <div class="day-row">
-          <span>${day.label}</span>
-          <div class="bar"><span style="width: ${width}%"></span></div>
-          <strong>${day.minutes} min</strong>
-        </div>
-      `;
-    })
-    .join('');
+function recordsForDate(records, date) {
+  const key = toDateKey(date);
+  return records.filter((record) => toDateKey(record.completedDate) === key);
 }
 
-function renderRecentRecords() {
-  const recentRecords = [...state.focusRecords]
-    .sort((a, b) => Number(b.completed_at || 0) - Number(a.completed_at || 0))
-    .slice(0, 8);
+function countStudyDays(records) {
+  return new Set(records.map((record) => toDateKey(record.completedDate))).size;
+}
 
-  document.querySelector('#journalRecentSummary').textContent = `${recentRecords.length} records`;
-  journalEmptyState.hidden = recentRecords.length > 0;
-  journalRecentList.innerHTML = recentRecords
-    .map((record) => `
-      <article class="recent-item">
-        <strong>${formatRecordTime(record)}</strong>
-        <span>${formatDuration(record.focus_seconds)}</span>
-      </article>
-    `)
-    .join('');
+function calculateLongestStreak(records) {
+  const keys = [...new Set(records.map((record) => toDateKey(record.completedDate)))].sort();
+  let longest = 0;
+  let current = 0;
+  let previous = null;
+
+  keys.forEach((key) => {
+    const date = new Date(`${key}T12:00:00`);
+    if (previous && (date - previous) === MS_PER_DAY) {
+      current += 1;
+    } else {
+      current = 1;
+    }
+
+    longest = Math.max(longest, current);
+    previous = date;
+  });
+
+  return longest;
+}
+
+function renderJournalMetricCards(items) {
+  return `
+    <div class="journal-metric-grid">
+      ${items.map((item) => `
+        <article class="journal-metric-card">
+          <span>${escapeHtml(item.label)}</span>
+          <strong>${escapeHtml(item.value)}</strong>
+          ${item.note ? `<em>${escapeHtml(item.note)}</em>` : ''}
+        </article>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderJournalTimeline(records, emptyText) {
+  if (records.length === 0) {
+    return `<div class="empty-state journal-empty-block"><p>${escapeHtml(emptyText)}</p></div>`;
+  }
+
+  return `
+    <div class="journal-timeline">
+      ${records.map((record, index) => `
+        <article class="journal-timeline-item">
+          <span class="journal-timeline-dot" aria-hidden="true"></span>
+          <div>
+            <strong>${formatClockTime(record.completedDate)}</strong>
+            <p>完成第 ${index + 1} 个番茄 · ${formatDuration(record.focus_seconds)}</p>
+          </div>
+        </article>
+      `).join('')}
+    </div>
+  `;
+}
+
+function getBestBucket(buckets, fallbackLabel = '--') {
+  const best = buckets.reduce((currentBest, bucket) => (
+    bucket.seconds > currentBest.seconds ? bucket : currentBest
+  ), { label: fallbackLabel, seconds: 0 });
+  return best.seconds > 0 ? best : { label: fallbackLabel, seconds: 0 };
+}
+
+function renderDayReview(period, records) {
+  const totalSeconds = sumFocusSeconds(records);
+  const firstRecord = records[0];
+  const earnedPoints = records.length * 20;
+
+  return `
+    <section class="journal-mode journal-day-review">
+      <div class="journal-mode-heading">
+        <div>
+          <p class="eyebrow">Daily Review</p>
+          <h2>今日复盘</h2>
+        </div>
+        <span>${period.title}</span>
+      </div>
+
+      ${renderJournalMetricCards([
+        { label: '今日专注总时长', value: formatDuration(totalSeconds), note: records.length ? '今天已留下记录' : '还没有开始' },
+        { label: '开始时间', value: formatClockTime(firstRecord?.completedDate), note: '第一段完成时间' },
+        { label: '完成次数', value: `${records.length} 次`, note: '完成番茄' },
+        { label: '打断次数', value: `${Math.max(0, records.length - 1)} 次`, note: '按间隔估算' }
+      ])}
+
+      <div class="journal-split">
+        <section class="journal-card journal-timeline-card">
+          <div class="section-title">
+            <h2>今日时间线</h2>
+            <span>${records.length} records</span>
+          </div>
+          ${renderJournalTimeline(records, '今天还没有完成专注。')}
+        </section>
+
+        <section class="journal-card journal-achievement-card">
+          <div class="section-title">
+            <h2>今日成就</h2>
+            <span>Daily Wins</span>
+          </div>
+          <div class="journal-achievement-list">
+            <article>
+              <strong>${records.length}</strong>
+              <span>完成番茄</span>
+            </article>
+            <article>
+              <strong>${earnedPoints}</strong>
+              <span>获得积分</span>
+            </article>
+            <article>
+              <strong>${calculateStudyStreak()}</strong>
+              <span>连续学习天数</span>
+            </article>
+          </div>
+        </section>
+      </div>
+    </section>
+  `;
+}
+
+function renderWeekRhythm(period, records, buckets) {
+  const totalSeconds = sumFocusSeconds(records);
+  const bestDay = getBestBucket(buckets);
+  const maxSeconds = Math.max(1, ...buckets.map((bucket) => bucket.seconds));
+  const activeDays = buckets.filter((bucket) => bucket.seconds > 0).length;
+
+  return `
+    <section class="journal-mode journal-week-rhythm">
+      <div class="journal-mode-heading">
+        <div>
+          <p class="eyebrow">Weekly Rhythm</p>
+          <h2>一周节奏</h2>
+        </div>
+        <span>${period.title}</span>
+      </div>
+
+      ${renderJournalMetricCards([
+        { label: '本周总时长', value: formatDuration(totalSeconds), note: `${activeDays} 天有记录` },
+        { label: '完成次数', value: `${records.length} 次`, note: '本周完成番茄' },
+        { label: '最佳学习日', value: bestDay.label, note: bestDay.seconds ? formatDuration(bestDay.seconds) : '暂无记录' },
+        { label: '连续学习天数', value: `${calculateStudyStreak()} 天`, note: '截至今天' }
+      ])}
+
+      <div class="journal-split">
+        <section class="journal-card journal-week-card">
+          <div class="section-title">
+            <h2>周一到周日</h2>
+            <span>学习分布</span>
+          </div>
+          <div class="journal-week-bars">
+            ${buckets.map((bucket) => {
+              const width = Math.max(6, Math.round((bucket.seconds / maxSeconds) * 100));
+              return `
+                <article>
+                  <strong>${bucket.label}</strong>
+                  <div class="journal-week-track">
+                    <span style="width: ${bucket.seconds > 0 ? width : 0}%"></span>
+                  </div>
+                  <em>${formatDuration(bucket.seconds)}</em>
+                </article>
+              `;
+            }).join('')}
+          </div>
+        </section>
+
+        <section class="journal-card journal-feedback-card">
+          <div class="section-title">
+            <h2>本周反馈</h2>
+            <span>Next Step</span>
+          </div>
+          <div class="journal-feedback">
+            <p>${records.length ? `本周最稳定的一天是 ${bestDay.label}，完成了 ${formatDuration(bestDay.seconds)}。` : '本周还没有专注记录，可以先完成一次 25 分钟。'}</p>
+            <p>${activeDays >= 3 ? '下周目标：保持这个节奏，尝试把专注分布到更多天。' : '下周目标：至少完成 3 天打卡，让节奏先稳定下来。'}</p>
+          </div>
+        </section>
+      </div>
+    </section>
+  `;
+}
+
+function buildMonthCalendarCells(period, records) {
+  const dayCount = Math.round((period.end - period.start) / MS_PER_DAY);
+  const leading = (period.start.getDay() + 6) % 7;
+  const cells = Array.from({ length: leading }, () => ({ empty: true }));
+
+  for (let index = 0; index < dayCount; index += 1) {
+    const date = addDays(period.start, index);
+    const dayRecords = recordsForDate(records, date);
+    cells.push({
+      empty: false,
+      date,
+      key: toDateKey(date),
+      day: index + 1,
+      records: dayRecords,
+      seconds: sumFocusSeconds(dayRecords)
+    });
+  }
+
+  return cells;
+}
+
+function ensureSelectedMonthDate(period) {
+  if (state.journalSelectedDate < period.start || state.journalSelectedDate >= period.end) {
+    const today = new Date();
+    state.journalSelectedDate = today >= period.start && today < period.end ? today : period.start;
+  }
+}
+
+function renderMonthCalendar(period, records) {
+  ensureSelectedMonthDate(period);
+  const cells = buildMonthCalendarCells(period, records);
+  const selectedKey = toDateKey(state.journalSelectedDate);
+  const selectedRecords = recordsForDate(records, state.journalSelectedDate);
+  const totalSeconds = sumFocusSeconds(records);
+  const selectedSeconds = sumFocusSeconds(selectedRecords);
+  const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
+
+  return `
+    <section class="journal-mode journal-month-calendar-view">
+      <div class="journal-mode-heading">
+        <div>
+          <p class="eyebrow">Monthly Calendar</p>
+          <h2>月度打卡日历</h2>
+        </div>
+        <span>${period.title}</span>
+      </div>
+
+      <div class="journal-month-layout">
+        <section class="journal-card journal-month-calendar-card">
+          <div class="section-title">
+            <h2>打卡日历</h2>
+            <span>${countStudyDays(records)} 天打卡 · ${formatDuration(totalSeconds)}</span>
+          </div>
+          <div class="journal-month-calendar">
+            ${weekdays.map((weekday) => `<span class="journal-weekday">${weekday}</span>`).join('')}
+            ${cells.map((cell) => cell.empty ? '<span class="journal-month-day is-empty"></span>' : `
+              <button class="journal-month-day${cell.seconds > 0 ? ' has-study' : ''}${cell.key === selectedKey ? ' is-selected' : ''}" type="button" data-journal-date="${cell.key}">
+                <strong>${cell.day}</strong>
+                <small>${cell.seconds > 0 ? formatDuration(cell.seconds) : ''}</small>
+              </button>
+            `).join('')}
+          </div>
+        </section>
+
+        <section class="journal-card journal-day-detail-card">
+          <div class="section-title">
+            <h2>当天详情</h2>
+            <span>${state.journalSelectedDate.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })}</span>
+          </div>
+          ${renderJournalMetricCards([
+            { label: '当天总时长', value: formatDuration(selectedSeconds) },
+            { label: '完成次数', value: `${selectedRecords.length} 次` }
+          ])}
+          ${renderJournalTimeline(selectedRecords, '这一天还没有专注记录。')}
+        </section>
+      </div>
+    </section>
+  `;
+}
+
+function renderYearReport(period, records, buckets) {
+  const totalSeconds = sumFocusSeconds(records);
+  const bestMonth = getBestBucket(buckets);
+  const studyDays = countStudyDays(records);
+  const longestStreak = calculateLongestStreak(records);
+  const maxSeconds = Math.max(1, ...buckets.map((bucket) => bucket.seconds));
+
+  return `
+    <section class="journal-mode journal-year-report">
+      <div class="journal-mode-heading">
+        <div>
+          <p class="eyebrow">Annual Growth</p>
+          <h2>年度成长报告</h2>
+        </div>
+        <span>${period.title}</span>
+      </div>
+
+      ${renderJournalMetricCards([
+        { label: '年度总专注时长', value: formatDuration(totalSeconds), note: '全年累计' },
+        { label: '总番茄数', value: `${records.length} 个`, note: '完成次数' },
+        { label: '学习天数', value: `${studyDays} 天`, note: '有记录的日期' },
+        { label: '累计积分', value: String(state.points), note: '当前账号' }
+      ])}
+
+      <section class="journal-card journal-year-track-card">
+        <div class="section-title">
+          <h2>12 个月学习轨迹</h2>
+          <span>${bestMonth.seconds ? `最佳月份 ${bestMonth.label}` : '暂无记录'}</span>
+        </div>
+        <div class="journal-year-track">
+          ${buckets.map((bucket) => {
+            const height = Math.max(8, Math.round((bucket.seconds / maxSeconds) * 100));
+            return `
+              <article>
+                <span class="journal-year-bar"><i style="height: ${bucket.seconds > 0 ? height : 0}%"></i></span>
+                <strong>${bucket.label}</strong>
+                <small>${formatDuration(bucket.seconds)}</small>
+              </article>
+            `;
+          }).join('')}
+        </div>
+      </section>
+
+      <section class="journal-card journal-achievement-wall">
+        <div class="section-title">
+          <h2>年度成就墙</h2>
+          <span>Milestones</span>
+        </div>
+        ${records.length ? `
+          <div class="journal-achievement-grid">
+            <article><strong>${formatRecordTime(records[0])}</strong><span>第一次完成专注</span></article>
+            <article><strong>${bestMonth.label}</strong><span>最高产月份</span></article>
+            <article><strong>${longestStreak} 天</strong><span>最长连续学习</span></article>
+            <article><strong>${records.length} 个</strong><span>累计番茄</span></article>
+          </div>
+        ` : '<div class="empty-state journal-empty-block"><p>今年还没有专注记录，完成一次专注后这里会生成成长报告。</p></div>'}
+      </section>
+    </section>
+  `;
 }
 
 function renderJournalView() {
-  document.querySelector('#journalTotalTimeText').textContent = formatDuration(state.totalFocusSeconds);
-  document.querySelector('#journalStreakText').textContent = String(calculateStudyStreak());
-  renderJournalDays();
-  renderRecentRecords();
+  const period = getJournalPeriod();
+  const records = getJournalPeriodRecords(period);
+  const buckets = buildJournalBuckets(period, records);
+
+  journalViewButtons.forEach((button) => {
+    button.classList.toggle('is-active', button.dataset.journalView === state.journalView);
+  });
+
+  journalRangeText.textContent = period.title;
+
+  if (!journalViewContent) {
+    return;
+  }
+
+  if (state.journalView === 'week') {
+    journalViewContent.innerHTML = renderWeekRhythm(period, records, buckets);
+  } else if (state.journalView === 'month') {
+    journalViewContent.innerHTML = renderMonthCalendar(period, records);
+  } else if (state.journalView === 'year') {
+    journalViewContent.innerHTML = renderYearReport(period, records, buckets);
+  } else {
+    journalViewContent.innerHTML = renderDayReview(period, records);
+  }
+}
+
+function setJournalView(viewName) {
+  if (!['day', 'week', 'month', 'year'].includes(viewName)) {
+    return;
+  }
+
+  state.journalView = viewName;
+  renderJournalView();
+}
+
+function shiftJournalPeriod(direction) {
+  const amount = direction === 'next' ? 1 : -1;
+
+  if (state.journalView === 'week') {
+    state.journalCursorDate = addDays(state.journalCursorDate, amount * 7);
+  } else if (state.journalView === 'month') {
+    state.journalCursorDate = addMonths(state.journalCursorDate, amount);
+  } else if (state.journalView === 'year') {
+    state.journalCursorDate = addYears(state.journalCursorDate, amount);
+  } else {
+    state.journalCursorDate = addDays(state.journalCursorDate, amount);
+  }
+
+  renderJournalView();
+}
+
+function handleJournalViewClick(event) {
+  const dateButton = event.target.closest('[data-journal-date]');
+  if (!dateButton) {
+    return;
+  }
+
+  state.journalSelectedDate = new Date(`${dateButton.dataset.journalDate}T12:00:00`);
+  renderJournalView();
 }
 
 function getTaskStatus(task) {
@@ -1217,6 +2211,7 @@ function renderCountdownView() {
 }
 
 function render() {
+  renderProfile();
   updateTimerView();
   updateCompanionView();
   renderTodoView();
@@ -1225,7 +2220,7 @@ function render() {
 }
 
 function escapeHtml(value) {
-  return value.replace(/[&<>"']/g, (char) => {
+  return String(value).replace(/[&<>"']/g, (char) => {
     const entities = {
       '&': '&amp;',
       '<': '&lt;',
@@ -1446,6 +2441,33 @@ async function resetFocus() {
   }
 }
 
+async function continueFocusAfterCompletion() {
+  if (completionContinueBusy) {
+    return;
+  }
+
+  try {
+    setCompletionContinueBusy(true);
+    hideCompletionDialog();
+    stopTimer();
+
+    const resetStatus = await requestBackend('/timer/reset', { method: 'POST' });
+    applyAppStatus({ timer: resetStatus, remaining_seconds: resetStatus.remaining_seconds });
+
+    const timerStatus = await requestBackend('/timer/start', {
+      method: 'POST',
+      body: JSON.stringify({ task_id: getCurrentTask()?.id || null })
+    });
+    applyAppStatus({ timer: timerStatus, remaining_seconds: timerStatus.remaining_seconds });
+    await refreshAppStatus();
+    showToast('已开始下一次专注');
+  } catch (error) {
+    showToast('后端还没有启动，暂时无法继续专注');
+  } finally {
+    setCompletionContinueBusy(false);
+  }
+}
+
 async function feedWithFood(foodId, fallbackName) {
   const previousPetState = state.petState;
   try {
@@ -1497,7 +2519,7 @@ function redeemSupply(itemName, foodId) {
 }
 
 function feedPet() {
-  feedWithFood('hamburger', '汉堡');
+  feedWithFood('watermelon', '西瓜');
 }
 
 function showPetStatus(status) {
@@ -1568,6 +2590,23 @@ navItems.forEach((item) => {
   item.addEventListener('click', () => setPage(item.dataset.page));
 });
 
+journalViewButtons.forEach((button) => {
+  button.addEventListener('click', () => setJournalView(button.dataset.journalView));
+});
+
+journalPrevButton?.addEventListener('click', () => shiftJournalPeriod('prev'));
+journalNextButton?.addEventListener('click', () => shiftJournalPeriod('next'));
+journalViewContent?.addEventListener('click', handleJournalViewClick);
+
+avatarButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    const targetPage = button.dataset.pageShortcut;
+    if (targetPage) {
+      setPage(targetPage);
+    }
+  });
+});
+
 startButtons.forEach((button) => {
   button.addEventListener('click', startFocus);
 });
@@ -1585,6 +2624,16 @@ document.querySelectorAll('.redeem-button').forEach((button) => {
 });
 
 todoForm.addEventListener('submit', addTodo);
+loginForm?.addEventListener('submit', loginUser);
+registerButton?.addEventListener('click', registerUser);
+chooseAvatarButton?.addEventListener('click', chooseAvatar);
+profileAvatarButton?.addEventListener('click', chooseAvatar);
+profileAvatarInput?.addEventListener('change', updateAvatarFromFile);
+saveProfileButton?.addEventListener('click', saveProfileFromSettings);
+logoutButton?.addEventListener('click', logoutUser);
+windowMinimizeButton?.addEventListener('click', () => window.petodo?.minimizeMainWindow?.());
+windowMaximizeButton?.addEventListener('click', () => window.petodo?.toggleMaximizeMainWindow?.());
+windowCloseButton?.addEventListener('click', () => window.petodo?.closeMainWindow?.());
 todoListElement.addEventListener('click', handleTodoListClick);
 todoListElement.addEventListener('change', handleTodoListChange);
 countdownForm.addEventListener('submit', addCountdownGoal);
@@ -1605,6 +2654,7 @@ openShopButton.addEventListener('click', () => setPage('shop'));
 document.querySelector('#openPetButton').addEventListener('click', openPetWindow);
 document.querySelector('#closePetButton').addEventListener('click', closePetWindow);
 completionCloseButton?.addEventListener('click', hideCompletionDialog);
+completionContinueButton?.addEventListener('click', continueFocusAfterCompletion);
 dailyTaskEasterEggCloseButton?.addEventListener('click', hideDailyTaskEasterEggDialog);
 todoRolloverCarryButton?.addEventListener('click', carryOverTodoTasksToToday);
 todoRolloverClearButton?.addEventListener('click', clearTodoTasksForToday);
@@ -1623,7 +2673,13 @@ if (dailyTaskEasterEggToggle) {
   dailyTaskEasterEggToggle.checked = state.dailyTaskEasterEggEnabled;
 }
 
+setupOnDemandScrollbars();
+
 window.petodo?.onNavigateToPage?.((pageName) => {
+  if (!state.userProfile.isLoggedIn) {
+    return;
+  }
+
   if (typeof pageName === 'string') {
     setPage(pageName);
     if (pageName === 'todo') {
@@ -1638,22 +2694,15 @@ window.petodo?.onNavigateToPage?.((pageName) => {
 });
 
 async function initializeApp() {
-  await loadTodoState();
-  if (state.currentTaskId && !getCurrentTask()) {
-    state.currentTaskId = '';
-    saveTodoState();
-  }
-
+  await syncCurrentAccountId({ force: true });
   render();
 
-  try {
-    await loadCountdownState();
-    renderCountdownView();
-  } catch (error) {
-    console.warn('Failed to initialize countdown state:', error);
+  if (state.userProfile.isLoggedIn && state.userProfile.accountId) {
+    await loadAccountSessionData();
+    render();
+    refreshAppStatus().finally(checkTodoRollover);
   }
 
-  refreshAppStatus().finally(checkTodoRollover);
   refreshPetStatus();
   appStatusPollTimer = window.setInterval(refreshAppStatus, 2000);
   dailyTodoCheckTimer = window.setInterval(checkTodoRollover, DAILY_TODO_CHECK_MS);

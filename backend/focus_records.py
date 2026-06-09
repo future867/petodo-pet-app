@@ -6,11 +6,12 @@ from storage import load_focus_data, save_focus_data
 
 
 class FocusRecordBook:
-    def __init__(self, datetime_provider=None, storage_enabled=True):
+    def __init__(self, datetime_provider=None, storage_enabled=True, account_id=None):
         self.datetime_provider = datetime_provider or datetime.now
         self.storage_enabled = storage_enabled
+        self.account_id = account_id
         self.lock = Lock()
-        self.data = load_focus_data() if storage_enabled else self._default_data()
+        self.data = load_focus_data(account_id) if storage_enabled else self._default_data()
 
     def sync_timer_status(self, timer_status: TimerStatus):
         focus_id = timer_status.last_completed_focus_id
@@ -66,7 +67,7 @@ class FocusRecordBook:
 
     def _save(self):
         if self.storage_enabled:
-            save_focus_data(self.data)
+            save_focus_data(self.data, self.account_id)
 
     def _default_data(self):
         return {"records": [], "last_recorded_focus_id": None, "last_recorded_focus_completed_at": None}

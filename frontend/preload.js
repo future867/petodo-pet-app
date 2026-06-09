@@ -15,11 +15,19 @@ contextBridge.exposeInMainWorld('petodo', {
   closeCountdownWidget: () => ipcRenderer.invoke('countdown-widget:close'),
   openTodoWidget: () => ipcRenderer.invoke('todo-widget:open'),
   closeTodoWidget: () => ipcRenderer.invoke('todo-widget:close'),
+  getTodoWidgetBounds: () => ipcRenderer.invoke('todo-widget:get-bounds'),
+  resizeTodoWidget: (size) => ipcRenderer.invoke('todo-widget:resize', size),
   loadCountdownGoals: () => ipcRenderer.invoke('countdown-storage:load'),
   saveCountdownGoals: (goals) => ipcRenderer.invoke('countdown-storage:save', goals),
   loadTodoState: () => ipcRenderer.invoke('todo-storage:load'),
   saveTodoState: (todoState) => ipcRenderer.invoke('todo-storage:save', todoState),
   showMainWindow: (pageName) => ipcRenderer.invoke('main-window:show', pageName),
+  setMainWindowAuthLayout: (isLoggedIn) => ipcRenderer.invoke('main-window:set-auth-layout', isLoggedIn),
+  setCurrentAccountId: (accountId) => ipcRenderer.invoke('account:set-current', accountId),
+  getCurrentAccountId: () => ipcRenderer.invoke('account:get-current'),
+  minimizeMainWindow: () => ipcRenderer.invoke('main-window:minimize'),
+  toggleMaximizeMainWindow: () => ipcRenderer.invoke('main-window:toggle-maximize'),
+  closeMainWindow: () => ipcRenderer.invoke('main-window:close'),
   onNavigateToPage: (callback) => {
     if (typeof callback !== 'function') {
       return () => {};

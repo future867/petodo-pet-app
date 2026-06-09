@@ -7,6 +7,11 @@ from storage import clamp_attribute, default_pet_data, load_pet_data, save_pet_d
 
 
 FOODS = {
+    "watermelon": {
+        "name": "西瓜",
+        "hunger": 5,
+        "mood": 0,
+    },
     "hamburger": {
         "name": "汉堡",
         "hunger": 10,
@@ -16,6 +21,7 @@ FOODS = {
         "name": "披萨",
         "hunger": 25,
         "mood": 0,
+        "eating_seconds": 3.4,
     },
     "chicken_leg": {
         "name": "鸡腿",
@@ -39,6 +45,7 @@ class PetStateMachine:
         time_provider=None,
         datetime_provider=None,
         storage_enabled=True,
+        account_id=None,
     ):
         self.time_provider = time_provider or time.time
         self.datetime_provider = datetime_provider or datetime.now
@@ -51,11 +58,12 @@ class PetStateMachine:
         self.happy_seconds = happy_seconds
         self.hunger_decay_seconds = hunger_decay_seconds
         self.storage_enabled = storage_enabled
+        self.account_id = account_id
         self.temporary_state = None
         self.lock = Lock()
 
         now = self._now()
-        self.data = load_pet_data(now) if storage_enabled else default_pet_data(now)
+        self.data = load_pet_data(now, account_id) if storage_enabled else default_pet_data(now)
         self._update_hungry_since(now)
         self._save()
 
@@ -85,6 +93,7 @@ class PetStateMachine:
             self._decay_hunger(now)
 
             food = FOODS[food_id]
+            eating_seconds = food.get("eating_seconds", self.eating_seconds)
             old_hunger = self.data["hunger"]
             old_mood = self.data["mood"]
             self.data["hunger"] = clamp_attribute(old_hunger + food["hunger"])
@@ -93,9 +102,9 @@ class PetStateMachine:
             self._update_hungry_since(now)
             self.temporary_state = {
                 "state": f"eating_{food_id}",
-                "until": now + self.eating_seconds,
+                "until": now + eating_seconds,
                 "next_state": "finished_eating",
-                "next_until": now + self.eating_seconds + self.finished_eating_seconds,
+                "next_until": now + eating_seconds + self.finished_eating_seconds,
                 "reason": f"正在吃{food['name']}",
                 "next_reason": "吃完后很开心",
             }
@@ -246,7 +255,7 @@ class PetStateMachine:
 
     def _save(self):
         if self.storage_enabled:
-            save_pet_data(self.data)
+            save_pet_data(self.data, self.account_id)
 
     def _now(self):
         return self.time_provider()
