@@ -16,6 +16,7 @@ PetState = Literal[
     "hungry_heavy",
     "angry",
     "eating",
+    "eating_watermelon",
     "eating_hamburger",
     "eating_pizza",
     "eating_chicken_leg",
@@ -24,7 +25,8 @@ PetState = Literal[
     "fishing",
 ]
 PetInteraction = Literal["tap"]
-FoodId = Literal["hamburger", "pizza", "chicken_leg"]
+FoodId = Literal["watermelon", "hamburger", "pizza", "chicken_leg"]
+FishingRewardItem = Literal["dried_fish", "fish", "golden_fish"]
 
 
 class TimerStatus(BaseModel):
@@ -50,6 +52,22 @@ class TimerStatus(BaseModel):
 
 class TimerStartRequest(BaseModel):
     task_id: str | None = None
+
+
+class AuthRequest(BaseModel):
+    account: str
+    password: str
+    display_name: str | None = None
+
+
+class AccountProfile(BaseModel):
+    account_id: str
+    account_name: str
+    display_name: str
+
+
+class ProfileUpdateRequest(BaseModel):
+    display_name: str
 
 
 class PetAttributes(BaseModel):
@@ -162,6 +180,21 @@ class FishingSettleResponse(BaseModel):
     rewardLabel: str = ""
     bubbleMessage: str = ""
     fishing: FishingStatus
+
+
+class FishingRewardUseRequest(BaseModel):
+    item: FishingRewardItem
+
+
+class FishingRewardUseResponse(BaseModel):
+    success: bool
+    item: FishingRewardItem
+    message: str
+    rewardLabel: str = ""
+    pointsAdded: int = 0
+    points: int | None = None
+    fishing: FishingStatus
+    feedResult: FeedResult | None = None
 
 
 class AppStatus(BaseModel):

@@ -12,6 +12,8 @@
 
     html,
     body {
+      width: 100%;
+      height: 100%;
       min-height: 100%;
       background: transparent;
     }
@@ -24,17 +26,19 @@
     }
 
     .todo-widget-shell {
+      position: relative;
       display: flex;
       flex-direction: column;
       width: 100%;
-      height: 300px;
+      height: 100%;
+      min-height: 0;
       padding: 14px;
       border: 1px solid rgba(222, 220, 209, 0.92);
       border-radius: 24px;
       background:
         radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.98), rgba(255, 247, 239, 0.9) 46%, rgba(250, 249, 245, 0.92)),
         rgba(255, 254, 250, 0.92);
-      box-shadow: 0 18px 42px rgba(20, 20, 19, 0.15);
+      box-shadow: none;
       backdrop-filter: blur(14px);
       -webkit-app-region: drag;
     }
@@ -42,7 +46,8 @@
     .todo-widget-toolbar,
     .todo-widget-list,
     .todo-widget-actions,
-    .todo-widget-empty {
+    .todo-widget-empty,
+    .todo-widget-resize-handle {
       -webkit-app-region: no-drag;
     }
 
@@ -50,6 +55,7 @@
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
+      flex: 0 0 auto;
       gap: 10px;
       margin-bottom: 12px;
     }
@@ -95,8 +101,31 @@
     .todo-widget-list {
       display: grid;
       gap: 8px;
+      align-content: start;
+      flex: 1 1 auto;
       min-height: 0;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding-right: 2px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(217, 119, 87, 0.48) transparent;
+    }
+
+    .todo-widget-list:empty {
+      display: none;
+    }
+
+    .todo-widget-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .todo-widget-list::-webkit-scrollbar-thumb {
+      border-radius: 999px;
+      background: rgba(217, 119, 87, 0.38);
+    }
+
+    .todo-widget-list::-webkit-scrollbar-track {
+      background: transparent;
     }
 
     .todo-widget-item {
@@ -143,8 +172,9 @@
 
     .todo-widget-empty {
       display: grid;
-      flex: 1;
+      flex: 1 1 auto;
       place-items: center;
+      min-height: 0;
       padding: 18px;
       border: 1px dashed rgba(222, 220, 209, 0.92);
       border-radius: 18px;
@@ -165,8 +195,10 @@
     .todo-widget-actions {
       display: grid;
       grid-template-columns: 1fr 1.25fr;
+      flex: 0 0 auto;
       gap: 8px;
-      margin-top: auto;
+      margin-top: 12px;
+      padding-right: 26px;
       padding-top: 12px;
     }
 
@@ -175,6 +207,51 @@
       padding: 0 10px;
       border-radius: 999px;
       font-size: 12px;
+    }
+
+    .todo-widget-resize-handle {
+      position: absolute;
+      right: 13px;
+      bottom: 10px;
+      z-index: 6;
+      display: grid;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      place-items: center;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: rgba(39, 35, 31, 0.54);
+      background: transparent;
+      cursor: nwse-resize;
+      opacity: 0.62;
+      transition: opacity 130ms ease, transform 130ms ease, background 130ms ease;
+      touch-action: none;
+    }
+
+    .todo-widget-shell:hover .todo-widget-resize-handle,
+    .todo-widget-shell.is-resizing .todo-widget-resize-handle,
+    .todo-widget-resize-handle:focus-visible {
+      opacity: 1;
+    }
+
+    .todo-widget-resize-handle:hover {
+      background: rgba(217, 119, 87, 0.1);
+      transform: translateY(-1px);
+    }
+
+    .todo-widget-resize-handle:active {
+      transform: translateY(1px) scale(0.98);
+    }
+
+    .todo-widget-resize-handle svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
   </style>
 </head>
@@ -199,6 +276,13 @@
       <button class="btn btn-secondary" id="todoWidgetRefreshButton" type="button">刷新</button>
       <button class="btn btn-primary" id="todoWidgetOpenMainButton" type="button">打开主窗口</button>
     </div>
+
+    <button class="todo-widget-resize-handle" id="todoWidgetResizeHandle" type="button" aria-label="拖动调整小组件大小">
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M5 13h8V5"></path>
+        <path d="M8 13l5-5"></path>
+      </svg>
+    </button>
   </main>
 
   <script src="todo_widget.js"></script>

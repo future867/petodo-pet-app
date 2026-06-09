@@ -1,6 +1,7 @@
 const EATING_DURATION_MS = 2200;
 const IRRITATION_TRIGGER_GREETS = 3;
 const DRAG_CLICK_THRESHOLD_PX = 4;
+const PET_DOUBLE_CLICK_DELAY_MS = 240;
 const FUN_ACTION_HOLD_MS = 4200;
 const GREET_ACTION_HOLD_MS = 1350;
 const RUN_ACTION_HOLD_MS = 2880;
@@ -19,6 +20,7 @@ const LONG_REST_SECOND_STAGE_SECONDS = 5 * 60;
 const FISHING_DURATION_MS = 4000;
 const FISHING_HAPPY_HOLD_MS = 1800;
 const FISHING_REWARD_POPUP_MS = 1700;
+const REWARD_REDEEM_HOLD_MS = 1600;
 const PET_CLICK_MESSAGE_HOLD_MS = 2200;
 const HUNGER_MESSAGE_HOLD_MS = 2600;
 const CONNECTION_MESSAGE_HOLD_MS = 3600;
@@ -45,7 +47,10 @@ const DEFAULT_MENU_STATE = {
 const PET_THEMES = {
   luoxiaohei: 'assets/pet/luoxiaohei'
 };
-const PLAYING_STATES = ['playing_01', 'playing_02', 'playing_03'];
+const PET_ASSETS = {
+  taskCompleteFish: 'assets/ui/rewards/luoxiaohei-task-complete-fish.webp'
+};
+const PLAYING_STATES = ['playing_01', 'playing_02', 'playing_03', 'playing_04'];
 const REST_INVITATIONS = [
   { message: '小黑想打个滚。', state: 'roll', holdMs: FUN_ACTION_HOLD_MS },
   { message: '小黑想伸个懒腰。', state: 'stretch', holdMs: STRETCH_ACTION_HOLD_MS },
@@ -61,6 +66,7 @@ const FOCUS_CLICK_MESSAGE = '现在是专注时间，小黑陪你学习。';
 const IDLE_CLICK_MESSAGE = '先完成一次专注，休息时再陪小黑玩。';
 const BACKEND_OFFLINE_MESSAGE = '服务未连接，专注和投喂暂不可用';
 const BACKEND_RESTORED_MESSAGE = '已连接，可以继续专注啦';
+const ACCOUNT_REQUIRED_MESSAGE = '请先在主窗口登录，桌宠会跟随当前账号';
 const petRoot = document.querySelector('#pet-root');
 const petSprite = document.querySelector('#pet-sprite');
 const petResizeHandle = document.querySelector('#pet-resize-handle');
@@ -81,6 +87,7 @@ const baitCount = document.querySelector('#bait-count');
 const driedFishCount = document.querySelector('#dried-fish-count');
 const fishCount = document.querySelector('#fish-count');
 const rareFishCount = document.querySelector('#rare-fish-count');
+const fishingRewardButtons = Array.from(document.querySelectorAll('[data-fishing-reward]'));
 
 let renderer = null;
 let activeState = DEFAULT_IDLE_STATE;
@@ -96,6 +103,7 @@ let lastCompletedFocusKey = null;
 let greetingClickCount = 0;
 let dragSession = null;
 let resizeSession = null;
+let petClickTimer = null;
 let suppressClickAfterDrag = false;
 let suppressClickAfterPanelClose = false;
 let menuState = { ...DEFAULT_MENU_STATE };
@@ -357,6 +365,11 @@ function clearFishingSettleTimer() {
 function updateFishingInventory(nextStatus = fishingStatus) {
   const status = nextStatus || {};
   const inventory = status.fishInventory || {};
+  const counts = {
+    dried_fish: Number(inventory.driedFish ?? 0),
+    fish: Number(inventory.fish ?? 0),
+    golden_fish: Number(status.rareFishCount ?? 0)
+  };
   if (baitCount) {
     baitCount.textContent = String(status.bait ?? 0);
   }
@@ -369,6 +382,17 @@ function updateFishingInventory(nextStatus = fishingStatus) {
   if (rareFishCount) {
     rareFishCount.textContent = String(status.rareFishCount ?? 0);
   }
+  const serviceUnavailable = menuState.backendStatus !== 'online';
+  fishingRewardButtons.forEach((button) => {
+    const item = button.dataset.fishingReward;
+    const count = counts[item] || 0;
+    const shouldDisable = serviceUnavailable || isFishingActive() || count <= 0;
+    button.disabled = shouldDisable;
+    button.classList.toggle('is-disabled', shouldDisable);
+    button.title = shouldDisable
+      ? (serviceUnavailable ? '服务未连接，暂不可用' : (isFishingActive() ? '小黑正在钓鱼，等一下再用' : '背包里还没有这个奖励'))
+      : '';
+  });
 }
 
 function hideFishingInvite() {
@@ -507,13 +531,41 @@ function hasPetWindowResizeApi() {
   );
 }
 
+async function getCurrentAccountId() {
+  const getAccountId = window.petodo?.getCurrentAccountId;
+  if (typeof getAccountId !== 'function') {
+    return '';
+  }
+
+  try {
+    const accountId = await getAccountId();
+    return typeof accountId === 'string' ? accountId.trim() : '';
+  } catch (error) {
+    console.warn('Failed to read current account for pet window:', error);
+    return '';
+  }
+}
+
 async function requestBackend(path, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
+  const { requireAccount = true, ...fetchOptions } = options;
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(fetchOptions.headers || {})
+  };
+
+  if (requireAccount) {
+    const accountId = await getCurrentAccountId();
+    if (!accountId) {
+      const error = new Error('Current account is required');
+      error.code = 'NO_CURRENT_ACCOUNT';
+      throw error;
     }
+    headers['X-Petodo-Account'] = accountId;
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...fetchOptions,
+    headers
   });
 
   if (!response.ok) {
@@ -538,7 +590,10 @@ function setBackendStatus(nextStatus) {
 
   menuState.backendStatus = nextStatus;
 
-  if (nextStatus === 'offline') {
+  if (nextStatus === 'signed-out') {
+    setPanelMessage(ACCOUNT_REQUIRED_MESSAGE);
+    showPetBubble(ACCOUNT_REQUIRED_MESSAGE, CONNECTION_MESSAGE_HOLD_MS);
+  } else if (nextStatus === 'offline') {
     setPanelMessage('服务未连接');
     showPetBubble(BACKEND_OFFLINE_MESSAGE, CONNECTION_MESSAGE_HOLD_MS);
   } else if (nextStatus === 'online') {
@@ -607,12 +662,12 @@ function updateMenuButtons() {
     ? '正在连接服务，请稍候'
     : '服务未连接，暂不可用';
   if (feedButton) {
-    const shouldDisable = serviceUnavailable || menuState.points < 20;
+    const shouldDisable = serviceUnavailable || menuState.points < 10;
     feedButton.disabled = shouldDisable;
     feedButton.classList.toggle('is-disabled', shouldDisable);
     feedButton.title = serviceUnavailable
       ? serviceUnavailableTitle
-      : (shouldDisable ? '积分不足，暂时不能兑换汉堡' : '');
+      : (shouldDisable ? '积分不足，暂时不能兑换西瓜' : '');
   }
 
   timerButtons.forEach((button) => {
@@ -629,6 +684,7 @@ function updateMenuButtons() {
     scaleUpButton.disabled = menuState.scalePercent >= PET_SCALE_MAX;
     scaleUpButton.classList.toggle('is-disabled', scaleUpButton.disabled);
   }
+  updateFishingInventory();
 }
 
 async function syncWindowSettings() {
@@ -932,6 +988,20 @@ async function playTemporaryState(stateName, holdMs = FUN_ACTION_HOLD_MS, option
   }, holdMs);
 }
 
+async function playRewardRedeemFeedback(options = {}) {
+  if (isFishingActive()) {
+    return;
+  }
+
+  await playTemporaryState('reward_redeem', REWARD_REDEEM_HOLD_MS, {
+    returnState: resolveTimerBaseState,
+    smoothReturn: true,
+    preserveBubble: true,
+    refreshRestInviteOnReturn: false,
+    ...options
+  });
+}
+
 async function waitForRendererReady(timeoutMs = 3000) {
   const startedAt = Date.now();
   while (!renderer && Date.now() - startedAt < timeoutMs) {
@@ -969,7 +1039,7 @@ async function playTaskCompletionEasterEgg() {
   taskCompleteEasterEgg.classList.remove('is-visible');
   taskCompleteAnimation.removeAttribute('src');
   void taskCompleteEasterEgg.offsetWidth;
-  taskCompleteAnimation.src = `assets/pet/luoxiaohei/gif/task-complete-fish.webp?restart=${Date.now()}`;
+  taskCompleteAnimation.src = `${PET_ASSETS.taskCompleteFish}?restart=${Date.now()}`;
   taskCompleteEasterEgg.classList.add('is-visible');
 
   taskCompletionEasterEggTimer = window.setTimeout(() => {
@@ -1111,7 +1181,7 @@ async function holdPetState(stateName, durationMs = 5000) {
 
 async function feedPet() {
   clearManualTransition();
-  await setPetState('eating_hamburger', { keepManualTransition: true });
+  await setPetState('eating_watermelon', { keepManualTransition: true });
 
   manualTransitionTimer = window.setTimeout(() => {
     playStateThen('finished_eating', () => resolveTimerBaseState());
@@ -1128,7 +1198,7 @@ async function redeemFishAndFeed() {
   try {
     const result = await requestBackend('/shop/redeem', {
       method: 'POST',
-      body: JSON.stringify({ food_id: 'hamburger' })
+      body: JSON.stringify({ food_id: 'watermelon' })
     });
 
     if (Number.isFinite(result.remaining_points)) {
@@ -1147,9 +1217,65 @@ async function redeemFishAndFeed() {
       await feedPet();
     }
 
-    setPanelMessage(result.message || '吃到汉堡');
+    setPanelMessage(result.message || '吃到西瓜');
     updateMenuButtons();
     window.setTimeout(() => fetchPetState(), 2600);
+  } catch (error) {
+    setBackendStatus('offline');
+  }
+}
+
+async function useFishingReward(item) {
+  if (menuState.backendStatus !== 'online') {
+    setServiceActionUnavailableMessage();
+    updateMenuButtons();
+    return;
+  }
+
+  if (isFishingActive()) {
+    showPetBubble('小黑正在钓鱼……', PET_CLICK_MESSAGE_HOLD_MS);
+    updateMenuButtons();
+    return;
+  }
+
+  try {
+    const result = await requestBackend('/fishing/reward/use', {
+      method: 'POST',
+      body: JSON.stringify({ item })
+    });
+
+    applyFishingStatus(result.fishing);
+    if (Number.isFinite(result.points)) {
+      menuState.points = result.points;
+    }
+
+    if (!result.success) {
+      setPanelMessage(result.message || '背包里没有这个奖励');
+      updateMenuButtons();
+      return;
+    }
+
+    setPanelMessage(result.message || '奖励已使用');
+    if (result.rewardLabel) {
+      showFishingReward(result.rewardLabel);
+    }
+    showPetBubble(result.message || '奖励已使用喵', PET_CLICK_MESSAGE_HOLD_MS);
+    updateMenuButtons();
+
+    if (item === 'dried_fish') {
+      if (result.feedResult?.status) {
+        await updatePetFromBackend({ pet: result.feedResult.status, fishing: result.fishing, points: result.points });
+      } else {
+        await feedPet();
+      }
+      await wait(EATING_DURATION_MS);
+      await playRewardRedeemFeedback();
+      window.setTimeout(() => fetchPetState(), REWARD_REDEEM_HOLD_MS + 600);
+      return;
+    }
+
+    await playRewardRedeemFeedback();
+    window.setTimeout(() => fetchPetState(), REWARD_REDEEM_HOLD_MS + 500);
   } catch (error) {
     setBackendStatus('offline');
   }
@@ -1297,6 +1423,45 @@ async function handlePetClickByTimerMode() {
   }
 
   await handleNormalPetSpriteClick();
+}
+
+function clearPendingPetClick() {
+  if (!petClickTimer) {
+    return;
+  }
+
+  window.clearTimeout(petClickTimer);
+  petClickTimer = null;
+}
+
+function schedulePetSpriteClick() {
+  clearPendingPetClick();
+  petClickTimer = window.setTimeout(async () => {
+    petClickTimer = null;
+    await handlePetClickByTimerMode();
+  }, PET_DOUBLE_CLICK_DELAY_MS);
+}
+
+async function handlePetSpriteDoubleClick(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  clearPendingPetClick();
+
+  if (suppressClickAfterPanelClose) {
+    suppressClickAfterPanelClose = false;
+    return;
+  }
+
+  if (suppressClickAfterDrag) {
+    suppressClickAfterDrag = false;
+    return;
+  }
+
+  if (isDraggingPet || isResizingPet) {
+    return;
+  }
+
+  await window.petodo?.showMainWindow?.();
 }
 
 function schedulePetWindowResize(scalePercent) {
@@ -1535,23 +1700,33 @@ function bindPetInteractions() {
   window.addEventListener('pointercancel', endPetResize);
   window.addEventListener('pointerup', endPetResize);
 
-  petSprite.addEventListener('click', async () => {
+  petSprite.addEventListener('click', () => {
     if (suppressClickAfterPanelClose) {
       suppressClickAfterPanelClose = false;
+      clearPendingPetClick();
       return;
     }
 
     if (suppressClickAfterDrag) {
       suppressClickAfterDrag = false;
+      clearPendingPetClick();
       return;
     }
 
-    await handlePetClickByTimerMode();
+    if (isDraggingPet || isResizingPet) {
+      clearPendingPetClick();
+      return;
+    }
+
+    schedulePetSpriteClick();
   });
+
+  petSprite.addEventListener('dblclick', handlePetSpriteDoubleClick);
 
   petSprite.addEventListener('contextmenu', async (event) => {
     event.preventDefault();
     event.stopPropagation();
+    clearPendingPetClick();
     suppressClickAfterPanelClose = false;
     suppressClickAfterDrag = false;
     if (isFishingActive()) {
@@ -1580,6 +1755,18 @@ function bindPetInteractions() {
       }
 
       await handleToolAction(button.dataset.action);
+    });
+  });
+
+  fishingRewardButtons.forEach((button) => {
+    button.addEventListener('click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (button.disabled) {
+        return;
+      }
+
+      await useFishingReward(button.dataset.fishingReward);
     });
   });
 
@@ -1653,6 +1840,20 @@ function stateFromHungerLevel(hungerLevel) {
   return DEFAULT_IDLE_STATE;
 }
 
+function isHungerWarningState(stateName) {
+  return ['hungry', 'hungry_heavy', 'angry'].includes(normalizePetStateName(stateName));
+}
+
+function shouldReleaseHungerHold(petStatus, hungerLevel) {
+  if (!Number.isFinite(hungerLevel) || hungerLevel < 60) {
+    return false;
+  }
+
+  const normalizedPetStatus = normalizePetStateName(petStatus);
+  const backendIsSafe = !isHungerWarningState(normalizedPetStatus);
+  return backendIsSafe && isHungerWarningState(activeState);
+}
+
 function applyFishingStatus(status) {
   if (!status) {
     return;
@@ -1721,6 +1922,11 @@ async function updatePetFromBackend(data = {}) {
   }
   updateMenuButtons();
 
+  if (shouldReleaseHungerHold(petStatus, hungerLevel)) {
+    manualVisualHoldUntil = 0;
+    clearManualTransition();
+  }
+
   if (isDraggingPet || isResizingPet) {
     return;
   }
@@ -1760,7 +1966,7 @@ async function updatePetFromBackend(data = {}) {
     return;
   }
 
-  if (petStatus === 'eating_hamburger' || petStatus === 'eating_pizza' || petStatus === 'eating_chicken_leg') {
+  if (petStatus === 'eating_watermelon' || petStatus === 'eating_hamburger' || petStatus === 'eating_pizza' || petStatus === 'eating_chicken_leg') {
     await setPetState(petStatus);
     return;
   }
@@ -1816,6 +2022,15 @@ async function fetchPetState() {
     await updatePetFromBackend(data);
     setBackendStatus('online');
   } catch (error) {
+    if (error.code === 'NO_CURRENT_ACCOUNT') {
+      manualVisualHoldUntil = 0;
+      clearManualTransition();
+      lastTimerStatus = 'idle';
+      await setPetState(DEFAULT_IDLE_STATE, { rememberPrevious: false });
+      setBackendStatus('signed-out');
+      return;
+    }
+
     setBackendStatus('offline');
     console.warn('Failed to sync pet state from backend:', error);
   }

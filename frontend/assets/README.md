@@ -1,17 +1,27 @@
-# Petodo 运行素材目录
+# Petodo frontend assets
 
-这个目录只放程序运行时会直接读取的素材。
+This folder keeps runtime assets for the Electron frontend.
 
-当前实际使用的主题素材在：
+## Structure
 
-- `pet/luoxiaohei`：罗小黑桌宠主题。
-
-不属于程序运行路径的候选 GIF、处理稿、导出图和课程输出文件，不放进这里。这样主窗口和桌宠窗口继续使用稳定的 `assets/...` 路径，不需要额外转换路径。
-
-检查素材是否完整：
-
-```bash
-node tools/check-used-assets.js
+```text
+assets/
+├── pet/
+│   └── luoxiaohei/
+│       ├── theme.json
+│       ├── gif/
+│       ├── img/
+│       ├── icons/
+│       └── sounds/
+├── ui/
+│   ├── icons/
+│   ├── bubbles/
+│   ├── backgrounds/
+│   └── rewards/
+├── _review-unused/
+└── _duplicates/
 ```
 
-如果以后替换桌宠动作，先把新素材放到对应主题目录，再同步修改对应主题的 `theme.json` 或前端图片映射，最后运行上面的检查命令。
+Runtime pet assets stay in `pet/luoxiaohei/`. Files that are not loaded by the app are kept in `_review-unused/` so they can be checked and deleted manually later.
+
+Do not delete uncertain or duplicate-looking assets. Move unused review files to `_review-unused/` and duplicate candidates to `_duplicates/`.

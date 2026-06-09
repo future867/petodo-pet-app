@@ -9,6 +9,10 @@ from storage import default_shop_data, load_shop_data, save_shop_data
 POINTS_PER_FOCUS = 20
 
 SHOP_ITEMS = {
+    "watermelon": {
+        "name": FOODS["watermelon"]["name"],
+        "price": 10,
+    },
     "hamburger": {
         "name": FOODS["hamburger"]["name"],
         "price": 20,
@@ -25,11 +29,12 @@ SHOP_ITEMS = {
 
 
 class ShopLedger:
-    def __init__(self, time_provider=None, storage_enabled=True):
+    def __init__(self, time_provider=None, storage_enabled=True, account_id=None):
         self.time_provider = time_provider or time.time
         self.storage_enabled = storage_enabled
+        self.account_id = account_id
         self.lock = Lock()
-        self.data = load_shop_data() if storage_enabled else default_shop_data()
+        self.data = load_shop_data(account_id) if storage_enabled else default_shop_data()
 
     def points_status(self, focus_stats: FocusStats, fishing_bonus_points=0):
         spent_points = self._spent_points()
@@ -94,4 +99,4 @@ class ShopLedger:
 
     def _save(self):
         if self.storage_enabled:
-            save_shop_data(self.data)
+            save_shop_data(self.data, self.account_id)

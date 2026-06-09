@@ -52,16 +52,16 @@
         <span id="panel-status" class="panel-status">正在连接</span>
       </div>
 
-      <dl class="fishing-inventory" aria-label="钓鱼收藏">
-        <div><dt>🪱 鱼饵</dt><dd id="bait-count">0</dd></div>
-        <div><dt>🍖 小鱼干</dt><dd id="dried-fish-count">0</dd></div>
-        <div><dt>🐟 普通鱼</dt><dd id="fish-count">0</dd></div>
-        <div><dt>🐠 金色鱼</dt><dd id="rare-fish-count">0</dd></div>
-      </dl>
+      <div class="fishing-inventory" aria-label="钓鱼收藏">
+        <div class="inventory-item is-static"><span>🪱 鱼饵</span><b id="bait-count">0</b></div>
+        <button class="inventory-item" type="button" data-fishing-reward="dried_fish"><span>🍖 小鱼干</span><b id="dried-fish-count">0</b></button>
+        <button class="inventory-item" type="button" data-fishing-reward="fish"><span>🐟 普通鱼</span><b id="fish-count">0</b></button>
+        <button class="inventory-item" type="button" data-fishing-reward="golden_fish"><span>🐠 金色鱼</span><b id="rare-fish-count">0</b></button>
+      </div>
 
       <div class="tool-group" aria-label="日常互动">
         <button class="tool-button" type="button" data-action="sleep"><span>💤</span><b>睡觉</b></button>
-        <button class="tool-button" type="button" data-action="feed"><span>🍔</span><b>吃饭</b></button>
+        <button class="tool-button" type="button" data-action="feed"><span>🍉</span><b>吃饭</b></button>
         <button class="tool-button" type="button" data-action="roll"><span>🌀</span><b>打滚</b></button>
         <button class="tool-button" type="button" data-action="guitar"><span>🎸</span><b>弹吉他</b></button>
         <button class="tool-button" type="button" data-action="scratch"><span>〽</span><b>磨爪子</b></button>

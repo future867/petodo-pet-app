@@ -8,11 +8,22 @@ PET_DATA_FILE = DATA_DIR / "pet_data.json"
 FOCUS_DATA_FILE = DATA_DIR / "focus_records.json"
 SHOP_DATA_FILE = DATA_DIR / "shop_data.json"
 FISHING_DATA_FILE = DATA_DIR / "fishing_data.json"
+ACCOUNTS_DATA_FILE = DATA_DIR / "accounts.json"
 
 
 def ensure_data_dir():
     DATA_DIR.mkdir(exist_ok=True)
     return DATA_DIR
+
+
+def account_data_dir(account_id):
+    return ensure_data_dir() / "accounts" / str(account_id)
+
+
+def account_data_file(account_id, file_name):
+    if not account_id:
+        return DATA_DIR / file_name
+    return account_data_dir(account_id) / file_name
 
 
 def default_pet_data(now=None):
@@ -27,9 +38,9 @@ def default_pet_data(now=None):
     }
 
 
-def load_pet_data(now=None):
+def load_pet_data(now=None, account_id=None):
     ensure_data_dir()
-    data = load_json_file(PET_DATA_FILE)
+    data = load_json_file(account_data_file(account_id, "pet_data.json"))
     if data is None:
         return default_pet_data(now)
 
@@ -43,8 +54,8 @@ def load_pet_data(now=None):
     return data
 
 
-def save_pet_data(data):
-    save_json_file(PET_DATA_FILE, data)
+def save_pet_data(data, account_id=None):
+    save_json_file(account_data_file(account_id, "pet_data.json"), data)
 
 
 def default_focus_data():
@@ -55,9 +66,9 @@ def default_focus_data():
     }
 
 
-def load_focus_data():
+def load_focus_data(account_id=None):
     ensure_data_dir()
-    data = load_json_file(FOCUS_DATA_FILE)
+    data = load_json_file(account_data_file(account_id, "focus_records.json"))
     if data is None:
         return default_focus_data()
 
@@ -80,8 +91,8 @@ def load_focus_data():
     }
 
 
-def save_focus_data(data):
-    save_json_file(FOCUS_DATA_FILE, data)
+def save_focus_data(data, account_id=None):
+    save_json_file(account_data_file(account_id, "focus_records.json"), data)
 
 
 def default_shop_data():
@@ -91,9 +102,9 @@ def default_shop_data():
     }
 
 
-def load_shop_data():
+def load_shop_data(account_id=None):
     ensure_data_dir()
-    data = load_json_file(SHOP_DATA_FILE)
+    data = load_json_file(account_data_file(account_id, "shop_data.json"))
     if data is None:
         return default_shop_data()
 
@@ -118,8 +129,8 @@ def load_shop_data():
     }
 
 
-def save_shop_data(data):
-    save_json_file(SHOP_DATA_FILE, data)
+def save_shop_data(data, account_id=None):
+    save_json_file(account_data_file(account_id, "shop_data.json"), data)
 
 
 def default_fishing_data(rewarded_focus_keys=None):
@@ -141,9 +152,9 @@ def default_fishing_data(rewarded_focus_keys=None):
     }
 
 
-def load_fishing_data():
+def load_fishing_data(account_id=None):
     ensure_data_dir()
-    data = load_json_file(FISHING_DATA_FILE)
+    data = load_json_file(account_data_file(account_id, "fishing_data.json"))
     if data is None:
         return None
 
@@ -168,8 +179,8 @@ def load_fishing_data():
     return normalized
 
 
-def save_fishing_data(data):
-    save_json_file(FISHING_DATA_FILE, data)
+def save_fishing_data(data, account_id=None):
+    save_json_file(account_data_file(account_id, "fishing_data.json"), data)
 
 
 def load_json_file(file_path):
@@ -185,6 +196,7 @@ def load_json_file(file_path):
 
 def save_json_file(file_path, data):
     ensure_data_dir()
+    file_path.parent.mkdir(parents=True, exist_ok=True)
     with file_path.open("w", encoding="utf-8") as file:
         json.dump(data, file, ensure_ascii=False, indent=2)
 

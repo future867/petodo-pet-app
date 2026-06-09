@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from models import (
     FishingInviteResponse,
+    FishingRewardUseResponse,
     FishingSessionStatus,
     FishingSettleResponse,
     FishingStartResponse,
@@ -23,16 +24,38 @@ RESULTS = (
     ("boot", 0.05, "👞", "怎么是破靴子……"),
 )
 
+INVENTORY_REWARDS = {
+    "dried_fish": {
+        "inventory_key": "driedFish",
+        "label": "🍖 -1",
+        "message": "小黑吃掉了小鱼干喵",
+        "points": 0,
+    },
+    "fish": {
+        "inventory_key": "fish",
+        "label": "🐟 -1  ⭐ +35",
+        "message": "普通鱼换成 35 积分喵",
+        "points": 35,
+    },
+    "golden_fish": {
+        "rare": True,
+        "label": "🐠 -1  ⭐ +50",
+        "message": "金色鱼换成 50 积分喵",
+        "points": 50,
+    },
+}
+
 
 class FishingLedger:
-    def __init__(self, existing_focus_records=None, time_provider=None, random_provider=None, storage_enabled=True):
+    def __init__(self, existing_focus_records=None, time_provider=None, random_provider=None, storage_enabled=True, account_id=None):
         self.time_provider = time_provider or time.time
         self.random_provider = random_provider or random.random
         self.storage_enabled = storage_enabled
+        self.account_id = account_id
         self.lock = Lock()
         existing_keys = self._focus_keys(existing_focus_records or [])
         if storage_enabled:
-            loaded = load_fishing_data()
+            loaded = load_fishing_data(account_id)
             self.data = loaded if loaded is not None else default_fishing_data(existing_keys)
         else:
             self.data = default_fishing_data(existing_keys)
@@ -137,6 +160,51 @@ class FishingLedger:
                 fishing=self._status(),
             )
 
+    def use_inventory_reward(self, item):
+        reward = INVENTORY_REWARDS[item]
+        with self.lock:
+            if self.data.get("activeFishing"):
+                return FishingRewardUseResponse(
+                    success=False,
+                    item=item,
+                    message="小黑正在钓鱼，等一下再用喵",
+                    fishing=self._status(),
+                )
+
+            if item == "golden_fish":
+                if self.data["rareFishCount"] <= 0:
+                    return FishingRewardUseResponse(
+                        success=False,
+                        item=item,
+                        message="背包里没有金色鱼喵",
+                        fishing=self._status(),
+                    )
+                self.data["rareFishCount"] -= 1
+            else:
+                inventory_key = reward["inventory_key"]
+                if self.data["fishInventory"].get(inventory_key, 0) <= 0:
+                    return FishingRewardUseResponse(
+                        success=False,
+                        item=item,
+                        message="背包里没有这个奖励喵",
+                        fishing=self._status(),
+                    )
+                self.data["fishInventory"][inventory_key] -= 1
+
+            points_added = int(reward["points"])
+            if points_added:
+                self.data["bonusPoints"] += points_added
+
+            self._save()
+            return FishingRewardUseResponse(
+                success=True,
+                item=item,
+                message=reward["message"],
+                rewardLabel=reward["label"],
+                pointsAdded=points_added,
+                fishing=self._status(),
+            )
+
     def _apply_reward(self, result):
         if result == "dried_fish":
             self.data["fishInventory"]["driedFish"] += 1
@@ -189,7 +257,7 @@ class FishingLedger:
 
     def _save(self):
         if self.storage_enabled:
-            save_fishing_data(self.data)
+            save_fishing_data(self.data, self.account_id)
 
     @staticmethod
     def _invite_probability(completed_count):

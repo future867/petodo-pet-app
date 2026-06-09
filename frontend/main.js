@@ -8,6 +8,7 @@ let countdownWidgetWindow = null;
 let todoWidgetWindow = null;
 let tray = null;
 let isQuitting = false;
+let currentAccountId = '';
 let petWindowBounds = null;
 let petWindowPanelOpen = false;
 let petWindowSettings = {
@@ -36,7 +37,23 @@ const PET_PANEL_LAYOUT = {
 const COUNTDOWN_WIDGET_SIZE = { width: 300, height: 260 };
 const COUNTDOWN_WIDGET_MARGIN = 18;
 const TODO_WIDGET_SIZE = { width: 280, height: 320 };
+const TODO_WIDGET_MIN_SIZE = { width: 260, height: 260 };
+const TODO_WIDGET_MAX_SIZE = { width: 520, height: 720 };
 const TODO_WIDGET_MARGIN = 18;
+const MAIN_WINDOW_AUTH_LAYOUTS = {
+  login: {
+    width: 430,
+    height: 520,
+    minWidth: 400,
+    minHeight: 480
+  },
+  app: {
+    width: 1200,
+    height: 760,
+    minWidth: 960,
+    minHeight: 640
+  }
+};
 
 function getWindowStatePath() {
   return path.join(app.getPath('userData'), 'pet-window-state.json');
@@ -48,6 +65,10 @@ function getCountdownStoragePath() {
 
 function getTodoStoragePath() {
   return path.join(app.getPath('userData'), 'todo-state.json');
+}
+
+function normalizeAccountId(accountId) {
+  return typeof accountId === 'string' ? accountId.trim() : '';
 }
 
 function createId(prefix) {
@@ -475,7 +496,7 @@ function createTray() {
     return tray;
   }
 
-  const iconPath = path.join(__dirname, 'assets', 'pet', 'luoxiaohei', 'happy', 'happy_01.png');
+  const iconPath = path.join(__dirname, 'assets', 'pet', 'luoxiaohei', 'img', 'happy', 'luoxiaohei-happy-01.png');
   const trayIcon = fs.existsSync(iconPath)
     ? nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 })
     : nativeImage.createEmpty();
@@ -515,12 +536,48 @@ function showMainWindow(pageName) {
   return true;
 }
 
+function applyMainWindowAuthLayout(isLoggedIn) {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return false;
+  }
+
+  const layout = isLoggedIn ? MAIN_WINDOW_AUTH_LAYOUTS.app : MAIN_WINDOW_AUTH_LAYOUTS.login;
+
+  if (mainWindow.isMaximized()) {
+    mainWindow.unmaximize();
+  }
+
+  mainWindow.setMinimumSize(layout.minWidth, layout.minHeight);
+
+  const currentBounds = mainWindow.getBounds();
+  const { workArea } = screen.getDisplayMatching(currentBounds);
+  const width = Math.min(layout.width, workArea.width);
+  const height = Math.min(layout.height, workArea.height);
+  const x = Math.round(workArea.x + (workArea.width - width) / 2);
+  const y = Math.round(workArea.y + (workArea.height - height) / 2);
+
+  mainWindow.setBounds({ x, y, width, height }, false);
+
+  if (!mainWindow.isVisible()) {
+    mainWindow.show();
+  }
+
+  return { width, height, minWidth: layout.minWidth, minHeight: layout.minHeight };
+}
+
 function createMainWindow() {
+  const loginLayout = MAIN_WINDOW_AUTH_LAYOUTS.login;
+
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 760,
-    minWidth: 960,
-    minHeight: 640,
+    width: loginLayout.width,
+    height: loginLayout.height,
+    minWidth: loginLayout.minWidth,
+    minHeight: loginLayout.minHeight,
+    show: false,
+    frame: false,
+    transparent: true,
+    autoHideMenuBar: true,
+    backgroundColor: '#00000000',
     title: 'Petodo 番茄钟桌宠',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -530,6 +587,7 @@ function createMainWindow() {
   });
 
   mainWindow.loadFile('index.html');
+  mainWindow.setMenuBarVisibility(false);
 
   mainWindow.on('close', (event) => {
     if (isQuitting) {
@@ -682,6 +740,55 @@ function getTodoWidgetBounds() {
   };
 }
 
+function clampTodoWidgetSize(width, height) {
+  return {
+    width: Math.min(TODO_WIDGET_MAX_SIZE.width, Math.max(TODO_WIDGET_MIN_SIZE.width, Math.round(width))),
+    height: Math.min(TODO_WIDGET_MAX_SIZE.height, Math.max(TODO_WIDGET_MIN_SIZE.height, Math.round(height)))
+  };
+}
+
+function getTodoWidgetCurrentBounds() {
+  if (!todoWidgetWindow || todoWidgetWindow.isDestroyed()) {
+    return null;
+  }
+
+  return todoWidgetWindow.getBounds();
+}
+
+function resizeTodoWidgetWindow(size = {}) {
+  if (!todoWidgetWindow || todoWidgetWindow.isDestroyed()) {
+    return null;
+  }
+
+  const currentBounds = todoWidgetWindow.getBounds();
+  const nextSize = clampTodoWidgetSize(
+    Number.isFinite(size.width) ? size.width : currentBounds.width,
+    Number.isFinite(size.height) ? size.height : currentBounds.height
+  );
+  const display = screen.getDisplayNearestPoint({
+    x: currentBounds.x + currentBounds.width,
+    y: currentBounds.y
+  }).workArea;
+  const nextRight = Math.min(
+    display.x + display.width - TODO_WIDGET_MARGIN,
+    Math.max(currentBounds.x + nextSize.width, currentBounds.x + currentBounds.width)
+  );
+  const nextX = Math.max(display.x + TODO_WIDGET_MARGIN, nextRight - nextSize.width);
+  const nextY = Math.min(
+    Math.max(display.y + TODO_WIDGET_MARGIN, currentBounds.y),
+    display.y + display.height - nextSize.height - TODO_WIDGET_MARGIN
+  );
+
+  todoWidgetWindow.setBounds({
+    x: nextX,
+    y: nextY,
+    width: nextSize.width,
+    height: nextSize.height
+  }, false);
+
+  return todoWidgetWindow.getBounds();
+}
+
 function showTodoWidgetWithoutFocus() {
   if (!todoWidgetWindow || todoWidgetWindow.isDestroyed()) {
     return;
@@ -706,10 +813,15 @@ function createTodoWidgetWindow() {
   const widgetBounds = getTodoWidgetBounds();
   todoWidgetWindow = new BrowserWindow({
     ...widgetBounds,
+    minWidth: TODO_WIDGET_MIN_SIZE.width,
+    minHeight: TODO_WIDGET_MIN_SIZE.height,
+    maxWidth: TODO_WIDGET_MAX_SIZE.width,
+    maxHeight: TODO_WIDGET_MAX_SIZE.height,
     frame: false,
     transparent: true,
     resizable: false,
     skipTaskbar: true,
+    hasShadow: false,
     focusable: true,
     show: false,
     backgroundColor: '#00000000',
@@ -794,6 +906,49 @@ ipcMain.handle('pet-window:set-always-on-top', (_event, enabled) => setPetWindow
 
 ipcMain.handle('main-window:show', (_event, pageName) => showMainWindow(pageName));
 
+ipcMain.handle('main-window:set-auth-layout', (_event, isLoggedIn) => {
+  return applyMainWindowAuthLayout(Boolean(isLoggedIn));
+});
+
+ipcMain.handle('account:set-current', (_event, accountId = '') => {
+  currentAccountId = normalizeAccountId(accountId);
+  return currentAccountId;
+});
+
+ipcMain.handle('account:get-current', () => currentAccountId);
+
+ipcMain.handle('main-window:minimize', () => {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return false;
+  }
+
+  mainWindow.minimize();
+  return true;
+});
+
+ipcMain.handle('main-window:toggle-maximize', () => {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return false;
+  }
+
+  if (mainWindow.isMaximized()) {
+    mainWindow.unmaximize();
+  } else {
+    mainWindow.maximize();
+  }
+
+  return mainWindow.isMaximized();
+});
+
+ipcMain.handle('main-window:close', () => {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return false;
+  }
+
+  mainWindow.close();
+  return true;
+});
+
 ipcMain.handle('app:quit', () => {
   isQuitting = true;
   app.quit();
@@ -824,6 +979,10 @@ ipcMain.handle('todo-widget:close', () => {
   closeTodoWidgetWindow();
   return true;
 });
+
+ipcMain.handle('todo-widget:get-bounds', () => getTodoWidgetCurrentBounds());
+
+ipcMain.handle('todo-widget:resize', (_event, size = {}) => resizeTodoWidgetWindow(size));
 
 ipcMain.handle('countdown-storage:load', () => loadCountdownGoalsFromDisk());
 
