@@ -8,6 +8,12 @@ __pycache__/
 backend/data/*.json
 backend/data/accounts/
 !backend/data/.gitkeep
+backend/pytest-of-*/
+docs/
+tools/
+undefined/
 layout-backup-*/
+frontend/assets/_duplicates/
+frontend/assets/_review-unused/
 NEXT_TASKS.md
 PROJECT_PROGRESS.md
