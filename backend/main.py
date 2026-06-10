@@ -91,7 +91,7 @@ def resolve_account_id(x_petodo_account: str | None = Header(default=None)):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
