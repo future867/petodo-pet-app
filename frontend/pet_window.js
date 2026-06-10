@@ -25,7 +25,8 @@ const PET_CLICK_MESSAGE_HOLD_MS = 2200;
 const HUNGER_MESSAGE_HOLD_MS = 2600;
 const CONNECTION_MESSAGE_HOLD_MS = 3600;
 const API_BASE_URL =
-  window.PETODO_CONFIG?.API_BASE_URL || "http://127.0.0.1:8000";
+  (window.PETODO_CONFIG?.API_BASE_URL || window.API_BASE_URL || "http://120.77.145.202").replace(/\/+$/, '');
+window.API_BASE_URL = API_BASE_URL;
 const CURRENT_TASK_STORAGE_KEY = 'currentTask';
 const DEFAULT_THEME_NAME = 'luoxiaohei';
 const DEFAULT_IDLE_STATE = 'idle_1';
@@ -549,6 +550,7 @@ async function getCurrentAccountId() {
 
 async function requestBackend(path, options = {}) {
   const { requireAccount = true, ...fetchOptions } = options;
+  const requestUrl = buildBackendUrl(path);
   const headers = {
     'Content-Type': 'application/json',
     ...(fetchOptions.headers || {})
@@ -564,16 +566,31 @@ async function requestBackend(path, options = {}) {
     headers['X-Petodo-Account'] = accountId;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...fetchOptions,
-    headers
-  });
+  let response;
+  try {
+    response = await fetch(requestUrl, {
+      ...fetchOptions,
+      headers
+    });
+  } catch (error) {
+    console.warn('Backend request failed:', requestUrl, error);
+    throw error;
+  }
 
   if (!response.ok) {
+    console.warn('Backend request returned error:', requestUrl, response.status);
     throw new Error(`Request failed: ${response.status}`);
   }
 
   return response.json();
+}
+
+function buildBackendUrl(path) {
+  return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+async function checkBackendHealth() {
+  return requestBackend('/health', { requireAccount: false });
 }
 
 function setPanelMessage(message) {
@@ -2019,6 +2036,7 @@ async function updatePetFromBackend(data = {}) {
 
 async function fetchPetState() {
   try {
+    await checkBackendHealth();
     const data = await requestBackend('/app/status');
     await updatePetFromBackend(data);
     setBackendStatus('online');

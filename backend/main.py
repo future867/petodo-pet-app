@@ -88,6 +88,16 @@ def resolve_account_id(x_petodo_account: str | None = Header(default=None)):
         raise HTTPException(status_code=401, detail="账号无效，请重新登录")
     return account["account_id"]
 
+
+def resolve_status_account_id(x_petodo_account: str | None = Header(default=None)):
+    if not x_petodo_account:
+        return None
+
+    account = account_book.account_by_id(x_petodo_account)
+    if not account:
+        return None
+    return account["account_id"]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -247,7 +257,7 @@ def decay_pet(account_id=Depends(resolve_account_id)):
 
 
 @app.get("/app/status", response_model=AppStatus)
-def get_app_status(account_id=Depends(resolve_account_id)):
+def get_app_status(account_id=Depends(resolve_status_account_id)):
     runtime = get_runtime(account_id)
     timer_status = sync_focus_records(runtime, runtime.timer.status())
     pet_status = runtime.pet.get_pet_state(timer_status)
