@@ -1,5 +1,6 @@
 const FOCUS_SECONDS = 25 * 60;
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const API_BASE_URL =
+  window.PETODO_CONFIG?.API_BASE_URL || "http://127.0.0.1:8000";
 const EMPTY_TASK_LABEL = '暂未选择任务';
 const TODO_STORAGE_KEY = 'todoList';
 const CURRENT_TASK_STORAGE_KEY = 'currentTask';
