@@ -465,6 +465,15 @@ def test_accounts_are_unique_and_backend_data_is_isolated(tmp_path, monkeypatch)
     assert brian_status["points"] == 0
 
 
+def test_app_status_ignores_invalid_account_header():
+    client = TestClient(main.app)
+
+    response = client.get("/app/status", headers={"X-Petodo-Account": "missing-cloud-account"})
+
+    assert response.status_code == 200
+    assert response.json()["timer"]["mode"] in {"idle", "focus", "paused", "break"}
+
+
 def test_app_status_returns_main_backend_shape(monkeypatch):
     clock = FakeClock()
     test_timer = PomodoroTimer(focus_seconds=10, break_seconds=5, time_provider=clock.now)

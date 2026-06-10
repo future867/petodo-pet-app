@@ -1,6 +1,7 @@
 const FOCUS_SECONDS = 25 * 60;
 const API_BASE_URL =
-  window.PETODO_CONFIG?.API_BASE_URL || "http://127.0.0.1:8000";
+  (window.PETODO_CONFIG?.API_BASE_URL || window.API_BASE_URL || "http://120.77.145.202").replace(/\/+$/, '');
+window.API_BASE_URL = API_BASE_URL;
 const EMPTY_TASK_LABEL = '暂未选择任务';
 const TODO_STORAGE_KEY = 'todoList';
 const CURRENT_TASK_STORAGE_KEY = 'currentTask';
@@ -1196,6 +1197,7 @@ function applyAppStatus(data = {}) {
 
 async function requestBackend(path, options = {}) {
   const { skipAuth = false, ...fetchOptions } = options;
+  const requestUrl = buildBackendUrl(path);
   const headers = {
     'Content-Type': 'application/json',
     ...(fetchOptions.headers || {})
@@ -1205,10 +1207,16 @@ async function requestBackend(path, options = {}) {
     headers['X-Petodo-Account'] = state.userProfile.accountId;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers,
-    ...fetchOptions
-  });
+  let response;
+  try {
+    response = await fetch(requestUrl, {
+      headers,
+      ...fetchOptions
+    });
+  } catch (error) {
+    console.warn('Backend request failed:', requestUrl, error);
+    throw error;
+  }
 
   if (!response.ok) {
     let message = '请求失败';
@@ -1216,10 +1224,19 @@ async function requestBackend(path, options = {}) {
       const errorBody = await response.json();
       message = errorBody.detail || message;
     } catch {}
+    console.warn('Backend request returned error:', requestUrl, response.status);
     throw new Error(message);
   }
 
   return response.json();
+}
+
+function buildBackendUrl(path) {
+  return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+async function checkBackendHealth() {
+  return requestBackend('/health', { skipAuth: true });
 }
 
 async function refreshAppStatus({ silent = true } = {}) {
@@ -2401,6 +2418,7 @@ async function startFocus() {
 
   try {
     stopTimer();
+    await checkBackendHealth();
     const timerStatus = await requestBackend('/timer/start', {
       method: 'POST',
       body: JSON.stringify({ task_id: getCurrentTask()?.id || null })
