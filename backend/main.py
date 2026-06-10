@@ -89,7 +89,7 @@ def resolve_account_id(x_petodo_account: str | None = Header(default=None)):
     return account["account_id"]
 
 
-def resolve_status_account_id(x_petodo_account: str | None = Header(default=None)):
+def resolve_optional_account_id(x_petodo_account: str | None = Header(default=None)):
     if not x_petodo_account:
         return None
 
@@ -152,53 +152,53 @@ def update_account_profile(request: ProfileUpdateRequest, account_id=Depends(res
 
 
 @app.post("/timer/start", response_model=TimerStatus)
-def start_timer(request: TimerStartRequest | None = None, account_id=Depends(resolve_account_id)):
+def start_timer(request: TimerStartRequest | None = None, account_id=Depends(resolve_optional_account_id)):
     runtime = get_runtime(account_id)
     task_id = request.task_id if request else None
     return sync_focus_records(runtime, runtime.timer.start(task_id=task_id))
 
 
 @app.post("/timer/pause", response_model=TimerStatus)
-def pause_timer(account_id=Depends(resolve_account_id)):
+def pause_timer(account_id=Depends(resolve_optional_account_id)):
     runtime = get_runtime(account_id)
     return sync_focus_records(runtime, runtime.timer.pause())
 
 
 @app.post("/timer/reset", response_model=TimerStatus)
-def reset_timer(account_id=Depends(resolve_account_id)):
+def reset_timer(account_id=Depends(resolve_optional_account_id)):
     runtime = get_runtime(account_id)
     return sync_focus_records(runtime, runtime.timer.reset())
 
 
 @app.get("/timer/status", response_model=TimerStatus)
-def get_timer_status(account_id=Depends(resolve_account_id)):
+def get_timer_status(account_id=Depends(resolve_optional_account_id)):
     runtime = get_runtime(account_id)
     return sync_focus_records(runtime, runtime.timer.status())
 
 
 @app.get("/pet/status", response_model=PetStatus)
-def get_pet_status(account_id=Depends(resolve_account_id)):
+def get_pet_status(account_id=Depends(resolve_optional_account_id)):
     runtime = get_runtime(account_id)
     timer_status = sync_focus_records(runtime, runtime.timer.status())
     return runtime.pet.get_pet_state(timer_status)
 
 
 @app.post("/pet/interact", response_model=PetStatus)
-def interact_with_pet(request: PetInteractionRequest, account_id=Depends(resolve_account_id)):
+def interact_with_pet(request: PetInteractionRequest, account_id=Depends(resolve_optional_account_id)):
     runtime = get_runtime(account_id)
     timer_status = sync_focus_records(runtime, runtime.timer.status())
     return runtime.pet.update_pet_state(timer_status, request.interaction)
 
 
 @app.post("/pet/feed", response_model=FeedResult)
-def feed_pet(request: FeedRequest, account_id=Depends(resolve_account_id)):
+def feed_pet(request: FeedRequest, account_id=Depends(resolve_optional_account_id)):
     runtime = get_runtime(account_id)
     timer_status = sync_focus_records(runtime, runtime.timer.status())
     return runtime.pet.feed(timer_status, request.food_id)
 
 
 @app.post("/shop/redeem", response_model=ShopRedeemResult)
-def redeem_shop_item(request: ShopRedeemRequest, account_id=Depends(resolve_account_id)):
+def redeem_shop_item(request: ShopRedeemRequest, account_id=Depends(resolve_optional_account_id)):
     runtime = get_runtime(account_id)
     timer_status = sync_focus_records(runtime, runtime.timer.status())
     stats = runtime.focus_records.stats()
@@ -206,34 +206,34 @@ def redeem_shop_item(request: ShopRedeemRequest, account_id=Depends(resolve_acco
 
 
 @app.post("/fishing/invite/check", response_model=FishingInviteResponse)
-def check_fishing_invite(account_id=Depends(resolve_account_id)):
+def check_fishing_invite(account_id=Depends(resolve_optional_account_id)):
     runtime = get_runtime(account_id)
     timer_status = sync_focus_records(runtime, runtime.timer.status())
     return runtime.fishing.check_invite(timer_status)
 
 
 @app.post("/fishing/invite/decline", response_model=FishingStatus)
-def decline_fishing_invite(account_id=Depends(resolve_account_id)):
+def decline_fishing_invite(account_id=Depends(resolve_optional_account_id)):
     runtime = get_runtime(account_id)
     timer_status = sync_focus_records(runtime, runtime.timer.status())
     return runtime.fishing.decline_invite(timer_status)
 
 
 @app.post("/fishing/start", response_model=FishingStartResponse)
-def start_fishing(account_id=Depends(resolve_account_id)):
+def start_fishing(account_id=Depends(resolve_optional_account_id)):
     runtime = get_runtime(account_id)
     timer_status = sync_focus_records(runtime, runtime.timer.status())
     return runtime.fishing.start(timer_status)
 
 
 @app.post("/fishing/settle", response_model=FishingSettleResponse)
-def settle_fishing(request: FishingSettleRequest, account_id=Depends(resolve_account_id)):
+def settle_fishing(request: FishingSettleRequest, account_id=Depends(resolve_optional_account_id)):
     runtime = get_runtime(account_id)
     return runtime.fishing.settle(request.sessionId)
 
 
 @app.post("/fishing/reward/use", response_model=FishingRewardUseResponse)
-def use_fishing_reward(request: FishingRewardUseRequest, account_id=Depends(resolve_account_id)):
+def use_fishing_reward(request: FishingRewardUseRequest, account_id=Depends(resolve_optional_account_id)):
     runtime = get_runtime(account_id)
     timer_status = sync_focus_records(runtime, runtime.timer.status())
     result = runtime.fishing.use_inventory_reward(request.item)
@@ -250,14 +250,14 @@ def use_fishing_reward(request: FishingRewardUseRequest, account_id=Depends(reso
 
 
 @app.post("/pet/decay", response_model=PetStatus)
-def decay_pet(account_id=Depends(resolve_account_id)):
+def decay_pet(account_id=Depends(resolve_optional_account_id)):
     runtime = get_runtime(account_id)
     timer_status = sync_focus_records(runtime, runtime.timer.status())
     return runtime.pet.decay_now(timer_status)
 
 
 @app.get("/app/status", response_model=AppStatus)
-def get_app_status(account_id=Depends(resolve_status_account_id)):
+def get_app_status(account_id=Depends(resolve_optional_account_id)):
     runtime = get_runtime(account_id)
     timer_status = sync_focus_records(runtime, runtime.timer.status())
     pet_status = runtime.pet.get_pet_state(timer_status)

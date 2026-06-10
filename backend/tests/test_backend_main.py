@@ -474,6 +474,33 @@ def test_app_status_ignores_invalid_account_header():
     assert response.json()["timer"]["mode"] in {"idle", "focus", "paused", "break"}
 
 
+def test_demo_endpoints_ignore_invalid_account_header():
+    client = TestClient(main.app)
+    headers = {"X-Petodo-Account": "missing-cloud-account"}
+
+    requests = [
+        lambda: client.post("/timer/start", headers=headers),
+        lambda: client.post("/timer/pause", headers=headers),
+        lambda: client.post("/timer/reset", headers=headers),
+        lambda: client.get("/timer/status", headers=headers),
+        lambda: client.get("/pet/status", headers=headers),
+        lambda: client.post("/pet/interact", json={"interaction": "tap"}, headers=headers),
+        lambda: client.post("/pet/feed", json={"food_id": "watermelon"}, headers=headers),
+        lambda: client.post("/pet/decay", headers=headers),
+        lambda: client.post("/shop/redeem", json={"food_id": "watermelon"}, headers=headers),
+        lambda: client.post("/fishing/invite/check", headers=headers),
+        lambda: client.post("/fishing/invite/decline", headers=headers),
+        lambda: client.post("/fishing/start", headers=headers),
+        lambda: client.post("/fishing/settle", json={"sessionId": "missing-session"}, headers=headers),
+        lambda: client.post("/fishing/reward/use", json={"item": "fish"}, headers=headers),
+    ]
+
+    responses = [make_request() for make_request in requests]
+
+    assert all(response.status_code != 401 for response in responses)
+    assert all(response.status_code < 500 for response in responses)
+
+
 def test_app_status_returns_main_backend_shape(monkeypatch):
     clock = FakeClock()
     test_timer = PomodoroTimer(focus_seconds=10, break_seconds=5, time_provider=clock.now)
