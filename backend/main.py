@@ -83,6 +83,9 @@ def resolve_account_id(x_petodo_account: str | None = Header(default=None)):
     if not x_petodo_account:
         return None
 
+    if is_local_profile_id(x_petodo_account):
+        return x_petodo_account
+
     account = account_book.account_by_id(x_petodo_account)
     if not account:
         raise HTTPException(status_code=401, detail="账号无效，请重新登录")
@@ -93,10 +96,19 @@ def resolve_optional_account_id(x_petodo_account: str | None = Header(default=No
     if not x_petodo_account:
         return None
 
+    if is_local_profile_id(x_petodo_account):
+        return x_petodo_account
+
     account = account_book.account_by_id(x_petodo_account)
     if not account:
         return None
     return account["account_id"]
+
+
+def is_local_profile_id(account_id):
+    return isinstance(account_id, str) and (
+        account_id == "future" or account_id.startswith("local-")
+    )
 
 app.add_middleware(
     CORSMiddleware,
