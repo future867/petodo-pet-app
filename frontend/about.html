@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Petodo About</title>
+  <link rel="stylesheet" href="about.css">
+</head>
+<body>
+  <main class="about-shell">
+    <aside class="about-sidebar" aria-label="关于窗口导航">
+      <div class="status-card">
+        <span class="status-dot" aria-hidden="true"></span>
+        <strong>Petodo</strong>
+        <span>学习陪伴</span>
+      </div>
+
+      <nav class="about-nav" aria-label="关于菜单">
+        <button class="about-nav-item is-active" type="button">
+          <span aria-hidden="true">i</span>
+          <strong>关于</strong>
+        </button>
+      </nav>
+    </aside>
+
+    <section class="about-content" aria-labelledby="aboutTitle">
+      <header class="about-hero">
+        <img
+          class="about-logo"
+          src="assets/pet/luoxiaohei/gif/luoxiaohei-idle-1.gif"
+          alt="Petodo 罗小黑"
+        >
+        <h1 id="aboutTitle">Petodo</h1>
+        <p>陪你完成番茄钟、待办和休息的小黑桌面伙伴。</p>
+      </header>
+
+      <section class="about-list" aria-label="应用信息">
+        <div class="about-row">
+          <span>版本</span>
+          <div class="about-row-value update-value">
+            <strong id="versionText">v0.1.0</strong>
+            <button class="update-button" id="checkUpdateButton" type="button">检查更新</button>
+          </div>
+        </div>
+
+        <div class="about-row">
+          <span>代码仓库</span>
+          <button class="link-button" id="repositoryButton" type="button">
+            github.com/future867/petodo-pet-app
+          </button>
+        </div>
+
+        <div class="about-row">
+          <span>开源协议</span>
+          <strong id="licenseText">暂未声明</strong>
+        </div>
+
+        <div class="about-row">
+          <span>作者</span>
+          <strong id="authorText">future867</strong>
+        </div>
+
+        <div class="about-row">
+          <span>维护者</span>
+          <strong id="maintainerText">future867</strong>
+        </div>
+      </section>
+
+      <section class="update-panel" id="updatePanel" aria-live="polite">
+        <p id="updateStatusText">可以手动检查 GitHub Releases 是否有新版本。</p>
+        <button class="link-button secondary-link" id="releaseButton" type="button" hidden>
+          打开发布页
+        </button>
+      </section>
+
+      <footer class="about-footer">
+        Petodo 是课程项目，也是一款学习陪伴桌面应用。
+      </footer>
+    </section>
+  </main>
+
+  <script src="about.js"></script>
+</body>
+</html>

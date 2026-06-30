@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, Tray } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, Tray, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
@@ -6,9 +6,10 @@ let mainWindow = null;
 let petWindow = null;
 let countdownWidgetWindow = null;
 let todoWidgetWindow = null;
+let aboutWindow = null;
 let tray = null;
 let isQuitting = false;
-let currentAccountId = '';
+let currentAccountId = 'future';
 let petWindowBounds = null;
 let petWindowPanelOpen = false;
 let petWindowSettings = {
@@ -40,6 +41,10 @@ const TODO_WIDGET_SIZE = { width: 280, height: 320 };
 const TODO_WIDGET_MIN_SIZE = { width: 260, height: 260 };
 const TODO_WIDGET_MAX_SIZE = { width: 520, height: 720 };
 const TODO_WIDGET_MARGIN = 18;
+const ABOUT_WINDOW_SIZE = { width: 980, height: 680, minWidth: 760, minHeight: 560 };
+const REPOSITORY_URL = 'https://github.com/future867/petodo-pet-app';
+const RELEASES_URL = `${REPOSITORY_URL}/releases`;
+const LATEST_RELEASE_API_URL = 'https://api.github.com/repos/future867/petodo-pet-app/releases/latest';
 const MAIN_WINDOW_AUTH_LAYOUTS = {
   login: {
     width: 430,
@@ -69,6 +74,10 @@ function getTodoStoragePath() {
 
 function normalizeAccountId(accountId) {
   return typeof accountId === 'string' ? accountId.trim() : '';
+}
+
+function getCurrentProfileId() {
+  return currentAccountId || 'future';
 }
 
 function createId(prefix) {
@@ -109,6 +118,7 @@ function normalizeTodoList(tasks = []) {
 }
 
 function normalizeTodoState(todoState = {}) {
+  const accountId = normalizeAccountId(todoState.accountId);
   const todoList = normalizeTodoList(todoState.todoList);
   const currentTaskId = typeof todoState.currentTaskId === 'string'
     && todoList.some((task) => task.id === todoState.currentTaskId && !task.completed)
@@ -117,6 +127,7 @@ function normalizeTodoState(todoState = {}) {
   const todoListDate = isValidDateKey(todoState.todoListDate) ? todoState.todoListDate : '';
 
   return {
+    accountId,
     todoList,
     currentTaskId,
     todoListDate
@@ -126,14 +137,25 @@ function normalizeTodoState(todoState = {}) {
 function loadTodoStateFromDisk() {
   try {
     const raw = fs.readFileSync(getTodoStoragePath(), 'utf8');
-    return normalizeTodoState(JSON.parse(raw));
+    const savedState = normalizeTodoState(JSON.parse(raw));
+    const profileId = getCurrentProfileId();
+    if (savedState.accountId && savedState.accountId !== profileId) {
+      return normalizeTodoState({ accountId: profileId });
+    }
+    return {
+      ...savedState,
+      accountId: savedState.accountId || profileId
+    };
   } catch {
-    return normalizeTodoState();
+    return normalizeTodoState({ accountId: getCurrentProfileId() });
   }
 }
 
 function saveTodoStateToDisk(todoState = {}) {
-  const normalizedState = normalizeTodoState(todoState);
+  const normalizedState = normalizeTodoState({
+    ...todoState,
+    accountId: getCurrentProfileId()
+  });
   fs.writeFileSync(
     getTodoStoragePath(),
     JSON.stringify(normalizedState, null, 2),
@@ -161,7 +183,11 @@ function normalizeCountdownGoals(goals = []) {
 function loadCountdownGoalsFromDisk() {
   try {
     const raw = fs.readFileSync(getCountdownStoragePath(), 'utf8');
-    return normalizeCountdownGoals(JSON.parse(raw));
+    const saved = JSON.parse(raw);
+    if (saved && !Array.isArray(saved) && saved.accountId && saved.accountId !== getCurrentProfileId()) {
+      return [];
+    }
+    return normalizeCountdownGoals(Array.isArray(saved) ? saved : saved?.goals);
   } catch {
     return [];
   }
@@ -171,7 +197,7 @@ function saveCountdownGoalsToDisk(goals = []) {
   const normalizedGoals = normalizeCountdownGoals(goals);
   fs.writeFileSync(
     getCountdownStoragePath(),
-    JSON.stringify(normalizedGoals, null, 2),
+    JSON.stringify({ accountId: getCurrentProfileId(), goals: normalizedGoals }, null, 2),
     'utf8'
   );
   return normalizedGoals;
@@ -448,6 +474,155 @@ function setPetWindowAlwaysOnTop(enabled) {
   return getPetWindowStatus();
 }
 
+function normalizeVersion(version) {
+  return String(version || '')
+    .trim()
+    .replace(/^v/i, '')
+    .split('-')[0];
+}
+
+function compareVersions(currentVersion, latestVersion) {
+  const currentParts = normalizeVersion(currentVersion).split('.').map((part) => Number(part));
+  const latestParts = normalizeVersion(latestVersion).split('.').map((part) => Number(part));
+
+  if (
+    currentParts.some((part) => !Number.isFinite(part)) ||
+    latestParts.some((part) => !Number.isFinite(part))
+  ) {
+    return null;
+  }
+
+  const length = Math.max(currentParts.length, latestParts.length);
+  for (let index = 0; index < length; index += 1) {
+    const current = currentParts[index] || 0;
+    const latest = latestParts[index] || 0;
+    if (latest > current) {
+      return 1;
+    }
+    if (latest < current) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+function getAboutInfo() {
+  return {
+    appName: 'Petodo',
+    version: app.getVersion() || '0.1.0',
+    repositoryUrl: REPOSITORY_URL,
+    releasesUrl: RELEASES_URL,
+    license: '暂未声明',
+    author: 'future867',
+    maintainer: 'future867'
+  };
+}
+
+function isAllowedExternalUrl(url) {
+  try {
+    const parsedUrl = new URL(url);
+    return parsedUrl.protocol === 'https:' &&
+      parsedUrl.hostname === 'github.com' &&
+      (
+        parsedUrl.pathname === '/future867/petodo-pet-app' ||
+        parsedUrl.pathname.startsWith('/future867/petodo-pet-app/')
+      );
+  } catch {
+    return false;
+  }
+}
+
+async function openAllowedExternalUrl(url) {
+  if (!isAllowedExternalUrl(url)) {
+    return false;
+  }
+
+  await shell.openExternal(url);
+  return true;
+}
+
+async function checkForUpdate() {
+  const currentVersion = app.getVersion() || '0.1.0';
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const response = await fetch(LATEST_RELEASE_API_URL, {
+      signal: controller.signal,
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'Petodo'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`GitHub release request failed: ${response.status}`);
+    }
+
+    const release = await response.json();
+    const latestVersion = normalizeVersion(release.tag_name || release.name);
+    const comparison = compareVersions(currentVersion, latestVersion);
+
+    return {
+      ok: true,
+      currentVersion,
+      latestVersion,
+      hasUpdate: comparison === 1,
+      canCompare: comparison !== null,
+      releaseUrl: release.html_url || RELEASES_URL
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      currentVersion,
+      message: error.name === 'AbortError'
+        ? '检查更新超时，请稍后重试'
+        : '检查更新失败，请稍后重试'
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function createAboutWindow() {
+  if (aboutWindow && !aboutWindow.isDestroyed()) {
+    aboutWindow.show();
+    aboutWindow.focus();
+    return aboutWindow;
+  }
+
+  aboutWindow = new BrowserWindow({
+    width: ABOUT_WINDOW_SIZE.width,
+    height: ABOUT_WINDOW_SIZE.height,
+    minWidth: ABOUT_WINDOW_SIZE.minWidth,
+    minHeight: ABOUT_WINDOW_SIZE.minHeight,
+    show: false,
+    title: 'Petodo About',
+    backgroundColor: '#f7f7fb',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  aboutWindow.loadFile('about.html');
+  aboutWindow.setMenuBarVisibility(false);
+  aboutWindow.once('ready-to-show', () => {
+    if (aboutWindow && !aboutWindow.isDestroyed()) {
+      aboutWindow.show();
+      aboutWindow.focus();
+    }
+  });
+
+  aboutWindow.on('closed', () => {
+    aboutWindow = null;
+  });
+
+  return aboutWindow;
+}
+
 function updateTrayMenu() {
   if (!tray) {
     return;
@@ -477,6 +652,11 @@ function updateTrayMenu() {
       label: '关闭未来倒计时小组件',
       enabled: Boolean(countdownWidgetWindow && !countdownWidgetWindow.isDestroyed()),
       click: () => closeCountdownWidgetWindow()
+    },
+    { type: 'separator' },
+    {
+      label: '关于 Petodo',
+      click: () => createAboutWindow()
     },
     { type: 'separator' },
     {
@@ -566,7 +746,7 @@ function applyMainWindowAuthLayout(isLoggedIn) {
 }
 
 function createMainWindow() {
-  const loginLayout = MAIN_WINDOW_AUTH_LAYOUTS.login;
+  const loginLayout = MAIN_WINDOW_AUTH_LAYOUTS.app;
 
   mainWindow = new BrowserWindow({
     width: loginLayout.width,
@@ -911,7 +1091,17 @@ ipcMain.handle('main-window:set-auth-layout', (_event, isLoggedIn) => {
 });
 
 ipcMain.handle('account:set-current', (_event, accountId = '') => {
-  currentAccountId = normalizeAccountId(accountId);
+  const nextAccountId = normalizeAccountId(accountId) || 'future';
+  const didChange = nextAccountId !== currentAccountId;
+  currentAccountId = nextAccountId;
+  if (didChange) {
+    if (todoWidgetWindow && !todoWidgetWindow.isDestroyed()) {
+      todoWidgetWindow.webContents.reloadIgnoringCache();
+    }
+    if (countdownWidgetWindow && !countdownWidgetWindow.isDestroyed()) {
+      countdownWidgetWindow.webContents.reloadIgnoringCache();
+    }
+  }
   return currentAccountId;
 });
 
@@ -995,6 +1185,12 @@ ipcMain.handle('todo-storage:load', () => loadTodoStateFromDisk());
 ipcMain.handle('todo-storage:save', (_event, todoState = {}) => {
   return saveTodoStateToDisk(todoState);
 });
+
+ipcMain.handle('about:get-info', () => getAboutInfo());
+
+ipcMain.handle('about:check-update', () => checkForUpdate());
+
+ipcMain.handle('about:open-external', (_event, url) => openAllowedExternalUrl(url));
 
 app.whenReady().then(() => {
   loadPetWindowBounds();
