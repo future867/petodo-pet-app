@@ -7,23 +7,23 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <section class="login-screen" id="loginScreen" aria-labelledby="loginTitle">
+  <section class="login-screen" id="loginScreen" aria-labelledby="loginTitle" hidden>
     <form class="login-card" id="loginForm">
       <span class="login-mark" aria-hidden="true">P</span>
       <p class="eyebrow">Petodo</p>
-      <h1 id="loginTitle">欢迎回来</h1>
-      <p>登录你的账号，继续今天的安静专注。</p>
+      <h1 id="loginTitle">进入 Petodo</h1>
+      <p>使用本机本地档案，继续今天的安静专注。</p>
       <label class="field">
-        <span>账号</span>
-        <input id="loginAccountInput" type="text" placeholder="例如 Amanda" autocomplete="username">
+        <span>本地档案</span>
+        <input id="loginAccountInput" type="text" placeholder="例如 future" autocomplete="off">
       </label>
-      <label class="field">
+      <label class="field" hidden>
         <span>密码</span>
-        <input id="loginPasswordInput" type="password" placeholder="至少 4 位" autocomplete="current-password">
+        <input id="loginPasswordInput" type="password" autocomplete="off">
       </label>
       <div class="login-actions">
-        <button class="btn btn-primary" type="submit">登录</button>
-        <button class="btn btn-secondary" id="registerButton" type="button">创建账号</button>
+        <button class="btn btn-primary" type="submit">进入 Petodo</button>
+        <button class="btn btn-secondary" id="registerButton" type="button">新建本地档案</button>
       </div>
     </form>
   </section>
@@ -341,10 +341,10 @@
           <p>保持番茄钟节奏和桌宠提醒清晰可控。</p>
         </header>
 
-        <section class="settings-card profile-settings-card" aria-label="个人资料设置">
+        <section class="settings-card profile-settings-card" aria-label="本地档案设置">
           <div class="section-title">
-            <h2>个人资料</h2>
-            <span>Profile</span>
+            <h2>本地档案</h2>
+            <span>Local profile</span>
           </div>
           <div class="profile-settings">
             <div class="profile-preview">
@@ -352,18 +352,27 @@
                 <span class="avatar-fallback" data-avatar-fallback>U</span>
                 <img data-user-avatar alt="用户头像" hidden>
               </button>
-              <p>头像会显示在顶部和左侧边栏。</p>
+              <p>本地档案只保存在这台电脑上，不是安全登录。</p>
             </div>
             <div class="profile-fields">
               <label class="field">
-                <span>昵称</span>
-                <input id="profileNameInput" type="text" placeholder="输入你的昵称" autocomplete="name">
+                <span>当前档案</span>
+                <select id="localProfileSelect" aria-label="当前本地档案"></select>
+              </label>
+              <label class="field">
+                <span>档案名称</span>
+                <input id="profileNameInput" type="text" placeholder="输入本地档案名称" autocomplete="off">
+              </label>
+              <label class="field">
+                <span>新建档案</span>
+                <input id="newLocalProfileInput" type="text" placeholder="输入新的本地档案名称" autocomplete="off">
               </label>
               <div class="profile-actions">
                 <input id="profileAvatarInput" type="file" accept="image/*" hidden>
                 <button class="btn btn-secondary" id="chooseAvatarButton" type="button">选择头像</button>
-                <button class="btn btn-primary" id="saveProfileButton" type="button">保存资料</button>
-                <button class="btn btn-ghost profile-logout-button" id="logoutButton" type="button">退出登录</button>
+                <button class="btn btn-primary" id="saveProfileButton" type="button">保存档案</button>
+                <button class="btn btn-secondary" id="createLocalProfileButton" type="button">新建档案</button>
+                <button class="btn btn-ghost profile-logout-button" id="logoutButton" type="button">切换到 future</button>
               </div>
             </div>
           </div>

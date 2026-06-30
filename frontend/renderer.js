@@ -8,6 +8,7 @@ const CURRENT_TASK_STORAGE_KEY = 'currentTask';
 const TODO_DATE_STORAGE_KEY = 'todoListDate';
 const COUNTDOWN_STORAGE_KEY = 'countdownGoals';
 const USER_PROFILE_STORAGE_KEY = 'petodoUserProfile';
+const LOCAL_PROFILE_INDEX_KEY = 'petodoLocalProfiles';
 const ACCOUNT_PROFILE_STORAGE_PREFIX = 'petodoAccountProfile';
 const ACCOUNT_DATA_STORAGE_PREFIX = 'petodoAccountData';
 const DAILY_TASK_EASTER_EGG_SETTING_KEY = 'dailyTaskEasterEggEnabled';
@@ -20,6 +21,8 @@ const DEFAULT_IDLE_STATE = 'idle_1';
 const SHORT_REST_SECOND_STAGE_SECONDS = 4 * 60;
 const LONG_REST_SECOND_STAGE_SECONDS = 5 * 60;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const DEFAULT_LOCAL_PROFILE_NAME = 'future';
+const DEFAULT_LOCAL_PROFILE_ID = 'future';
 
 const initialUserProfile = loadUserProfile();
 const initialAccountId = initialUserProfile.isLoggedIn ? initialUserProfile.accountId : '';
@@ -143,10 +146,13 @@ const windowMinimizeButton = document.querySelector('#windowMinimizeButton');
 const windowMaximizeButton = document.querySelector('#windowMaximizeButton');
 const windowCloseButton = document.querySelector('#windowCloseButton');
 const profileNameInput = document.querySelector('#profileNameInput');
+const localProfileSelect = document.querySelector('#localProfileSelect');
+const newLocalProfileInput = document.querySelector('#newLocalProfileInput');
 const profileAvatarInput = document.querySelector('#profileAvatarInput');
 const profileAvatarButton = document.querySelector('#profileAvatarButton');
 const chooseAvatarButton = document.querySelector('#chooseAvatarButton');
 const saveProfileButton = document.querySelector('#saveProfileButton');
+const createLocalProfileButton = document.querySelector('#createLocalProfileButton');
 const logoutButton = document.querySelector('#logoutButton');
 const avatarButtons = document.querySelectorAll('.avatar-button');
 const avatarImages = document.querySelectorAll('[data-user-avatar]');
@@ -256,30 +262,147 @@ function setupOnDemandScrollbars() {
   });
 }
 
+function normalizeLocalProfileName(name) {
+  return String(name || '').trim();
+}
+
+function getLocalProfileNameKey(name) {
+  return normalizeLocalProfileName(name).toLocaleLowerCase();
+}
+
+function createLocalProfileId(name) {
+  const normalizedName = getLocalProfileNameKey(name) || DEFAULT_LOCAL_PROFILE_ID;
+  const safeName = normalizedName.replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || DEFAULT_LOCAL_PROFILE_ID;
+  return safeName === DEFAULT_LOCAL_PROFILE_ID
+    ? DEFAULT_LOCAL_PROFILE_ID
+    : `local-${safeName}-${Date.now().toString(36)}-${Math.random().toString(16).slice(2, 8)}`;
+}
+
+function normalizeLocalProfile(profile = {}) {
+  const accountName = normalizeLocalProfileName(profile.accountName || profile.name || DEFAULT_LOCAL_PROFILE_NAME);
+  const accountId = typeof profile.accountId === 'string' && profile.accountId.trim()
+    ? profile.accountId.trim()
+    : createLocalProfileId(accountName);
+
+  return {
+    isLoggedIn: true,
+    accountId,
+    accountName,
+    name: normalizeLocalProfileName(profile.name || accountName),
+    avatar: typeof profile.avatar === 'string' ? profile.avatar : ''
+  };
+}
+
+function getDefaultLocalProfile() {
+  return normalizeLocalProfile({
+    accountId: DEFAULT_LOCAL_PROFILE_ID,
+    accountName: DEFAULT_LOCAL_PROFILE_NAME,
+    name: DEFAULT_LOCAL_PROFILE_NAME
+  });
+}
+
+function readLocalProfileIndex() {
+  try {
+    const savedProfiles = JSON.parse(localStorage.getItem(LOCAL_PROFILE_INDEX_KEY) || '[]');
+    if (!Array.isArray(savedProfiles)) {
+      return [];
+    }
+
+    const profiles = [];
+    const seenNames = new Set();
+    savedProfiles.forEach((profile) => {
+      const normalizedProfile = normalizeLocalProfile(profile);
+      const nameKey = getLocalProfileNameKey(normalizedProfile.accountName);
+      if (!nameKey || seenNames.has(nameKey)) {
+        return;
+      }
+      seenNames.add(nameKey);
+      profiles.push(normalizedProfile);
+    });
+    return profiles;
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalProfileIndex(profiles = []) {
+  const normalizedProfiles = [];
+  const seenNames = new Set();
+
+  profiles.forEach((profile) => {
+    const normalizedProfile = normalizeLocalProfile(profile);
+    const nameKey = getLocalProfileNameKey(normalizedProfile.accountName);
+    if (!nameKey || seenNames.has(nameKey)) {
+      return;
+    }
+    seenNames.add(nameKey);
+    normalizedProfiles.push(normalizedProfile);
+  });
+
+  localStorage.setItem(LOCAL_PROFILE_INDEX_KEY, JSON.stringify(normalizedProfiles));
+  return normalizedProfiles;
+}
+
+function ensureLocalProfiles(currentProfile = null) {
+  const profiles = readLocalProfileIndex();
+  const profileToInclude = currentProfile ? normalizeLocalProfile(currentProfile) : null;
+  const defaultProfile = getDefaultLocalProfile();
+  const mergedProfiles = profiles.length > 0 ? profiles : [profileToInclude || defaultProfile];
+
+  if (profileToInclude) {
+    const profileNameKey = getLocalProfileNameKey(profileToInclude.accountName);
+    const existingIndex = mergedProfiles.findIndex((profile) => (
+      profile.accountId === profileToInclude.accountId ||
+      getLocalProfileNameKey(profile.accountName) === profileNameKey
+    ));
+    if (existingIndex >= 0) {
+      mergedProfiles[existingIndex] = {
+        ...mergedProfiles[existingIndex],
+        ...profileToInclude
+      };
+    } else {
+      mergedProfiles.push(profileToInclude);
+    }
+  }
+
+  if (!mergedProfiles.some((profile) => getLocalProfileNameKey(profile.accountName) === DEFAULT_LOCAL_PROFILE_NAME)) {
+    mergedProfiles.unshift(defaultProfile);
+  }
+
+  return writeLocalProfileIndex(mergedProfiles);
+}
+
+function findLocalProfileById(accountId) {
+  return readLocalProfileIndex().find((profile) => profile.accountId === accountId) || null;
+}
+
+function findLocalProfileByName(name) {
+  const nameKey = getLocalProfileNameKey(name);
+  return readLocalProfileIndex().find((profile) => getLocalProfileNameKey(profile.accountName) === nameKey) || null;
+}
+
 function loadUserProfile() {
   try {
     const saved = JSON.parse(localStorage.getItem(USER_PROFILE_STORAGE_KEY) || '{}');
-    return {
-      isLoggedIn: Boolean(saved.isLoggedIn),
-      accountId: typeof saved.accountId === 'string' ? saved.accountId : '',
-      accountName: typeof saved.accountName === 'string' ? saved.accountName.trim() : '',
-      name: typeof saved.name === 'string' ? saved.name.trim() : '',
+    const savedProfile = normalizeLocalProfile({
+      accountId: typeof saved.accountId === 'string' && saved.accountId.trim() ? saved.accountId : DEFAULT_LOCAL_PROFILE_ID,
+      accountName: typeof saved.accountName === 'string' && saved.accountName.trim() ? saved.accountName : DEFAULT_LOCAL_PROFILE_NAME,
+      name: typeof saved.name === 'string' && saved.name.trim() ? saved.name : (saved.accountName || DEFAULT_LOCAL_PROFILE_NAME),
       avatar: typeof saved.avatar === 'string' ? saved.avatar : ''
-    };
+    });
+    const profiles = ensureLocalProfiles(savedProfile);
+    return profiles.find((profile) => profile.accountId === savedProfile.accountId) || profiles[0] || getDefaultLocalProfile();
   } catch {
-    return {
-      isLoggedIn: false,
-      accountId: '',
-      accountName: '',
-      name: '',
-      avatar: ''
-    };
+    const profiles = ensureLocalProfiles(getDefaultLocalProfile());
+    return profiles[0] || getDefaultLocalProfile();
   }
 }
 
 function saveUserProfile() {
+  state.userProfile = normalizeLocalProfile(state.userProfile);
   localStorage.setItem(USER_PROFILE_STORAGE_KEY, JSON.stringify(state.userProfile));
   saveAccountProfile(state.userProfile);
+  ensureLocalProfiles(state.userProfile);
 }
 
 function getAccountProfileKey(accountId) {
@@ -472,6 +595,11 @@ function applyExternalTodoState(todoState = {}) {
 async function loadCountdownState() {
   const legacyGoals = loadCountdownList();
   state.countdownList = legacyGoals;
+  if (window.petodo?.saveCountdownGoals) {
+    window.petodo.saveCountdownGoals(state.countdownList).catch((error) => {
+      console.warn('Failed to sync account countdown state to desktop storage:', error);
+    });
+  }
   return state.countdownList;
 }
 
@@ -749,9 +877,7 @@ function syncMainWindowAuthLayout(isLoggedIn) {
 }
 
 function getActiveAccountId() {
-  return state.userProfile.isLoggedIn && state.userProfile.accountId
-    ? state.userProfile.accountId
-    : '';
+  return state.userProfile.accountId || DEFAULT_LOCAL_PROFILE_ID;
 }
 
 async function syncCurrentAccountId(options = {}) {
@@ -777,11 +903,14 @@ async function syncCurrentAccountId(options = {}) {
 }
 
 function renderProfile() {
-  const isLoggedIn = Boolean(state.userProfile.isLoggedIn);
+  state.userProfile = normalizeLocalProfile(state.userProfile);
+  const isLoggedIn = true;
   const name = getProfileName();
   document.documentElement.classList.toggle('is-authenticated', isLoggedIn);
   document.body.classList.toggle('is-authenticated', isLoggedIn);
-  loginScreen.hidden = isLoggedIn;
+  if (loginScreen) {
+    loginScreen.hidden = true;
+  }
   syncMainWindowAuthLayout(isLoggedIn);
   syncCurrentAccountId();
 
@@ -792,7 +921,15 @@ function renderProfile() {
   }
 
   if (profileNameInput && document.activeElement !== profileNameInput) {
-    profileNameInput.value = state.userProfile.name || '';
+    profileNameInput.value = state.userProfile.accountName || state.userProfile.name || '';
+  }
+
+  if (localProfileSelect && document.activeElement !== localProfileSelect) {
+    const profiles = ensureLocalProfiles(state.userProfile);
+    localProfileSelect.innerHTML = profiles
+      .map((profile) => `<option value="${escapeHtml(profile.accountId)}">${escapeHtml(profile.accountName)}</option>`)
+      .join('');
+    localProfileSelect.value = state.userProfile.accountId;
   }
 
   if (loginAccountInput && !isLoggedIn && document.activeElement !== loginAccountInput) {
@@ -879,36 +1016,21 @@ async function applyAuthenticatedAccount(account) {
 
 async function authenticateUser(endpoint, successMessage) {
   const account = loginAccountInput.value.trim();
-  const password = loginPasswordInput.value;
 
   if (!account) {
-    showToast('请先输入账号');
+    showToast('请先输入本地档案名称');
     loginAccountInput.focus();
     return;
   }
 
-  if (!password) {
-    showToast('请先输入密码');
-    loginPasswordInput.focus();
+  const existingProfile = findLocalProfileByName(account);
+  if (existingProfile) {
+    await switchLocalProfile(existingProfile.accountId);
+    showToast(`已切换到 ${existingProfile.accountName}`);
     return;
   }
 
-  try {
-    const accountProfile = await requestBackend(endpoint, {
-      method: 'POST',
-      body: JSON.stringify({
-        account,
-        password,
-        display_name: account
-      }),
-      skipAuth: true
-    });
-    await applyAuthenticatedAccount(accountProfile);
-    loginPasswordInput.value = '';
-    showToast(successMessage(accountProfile));
-  } catch (error) {
-    showToast(error.message || '账号验证失败');
-  }
+  await createLocalProfile(account);
 }
 
 function loginUser(event) {
@@ -924,49 +1046,91 @@ async function saveProfileFromSettings() {
   const name = profileNameInput.value.trim();
 
   if (!name) {
-    showToast('昵称不能为空');
+    showToast('档案名称不能为空');
     profileNameInput.focus();
     return;
   }
 
-  state.userProfile = {
+  const existingProfile = findLocalProfileByName(name);
+  if (existingProfile && existingProfile.accountId !== state.userProfile.accountId) {
+    showToast('本地档案已存在');
+    profileNameInput.focus();
+    return;
+  }
+
+  state.userProfile = normalizeLocalProfile({
     ...state.userProfile,
-    isLoggedIn: true,
+    accountName: name,
     name
-  };
+  });
   saveUserProfile();
   renderProfile();
-
-  try {
-    const updated = await requestBackend('/auth/profile', {
-      method: 'POST',
-      body: JSON.stringify({ display_name: name })
-    });
-    state.userProfile = {
-      ...state.userProfile,
-      accountName: updated.account_name,
-      name: updated.display_name
-    };
-    saveUserProfile();
-    renderProfile();
-    showToast('个人资料已保存');
-  } catch (error) {
-    showToast(error.message || '个人资料已保存在本地');
-  }
+  showToast('本地档案已保存');
 }
 
-function logoutUser() {
+async function switchLocalProfile(accountId) {
+  const profile = findLocalProfileById(accountId);
+  if (!profile) {
+    showToast('本地档案不存在');
+    return;
+  }
+
+  stopTimer();
+  state.userProfile = normalizeLocalProfile(profile);
   saveUserProfile();
-  state.userProfile = {
-    ...state.userProfile,
-    isLoggedIn: false
-  };
-  saveUserProfile();
-  syncCurrentAccountId({ force: true });
-  resetSessionData();
+  await syncCurrentAccountId({ force: true });
+  await loadAccountSessionData();
   setPage('home');
   renderProfile();
   render();
+  await refreshAppStatus();
+  checkTodoRollover();
+}
+
+async function createLocalProfile(name) {
+  const profileName = normalizeLocalProfileName(name);
+  if (!profileName) {
+    showToast('档案名称不能为空');
+    newLocalProfileInput?.focus();
+    return;
+  }
+
+  if (findLocalProfileByName(profileName)) {
+    showToast('本地档案已存在');
+    newLocalProfileInput?.focus();
+    return;
+  }
+
+  const profile = normalizeLocalProfile({
+    accountId: createLocalProfileId(profileName),
+    accountName: profileName,
+    name: profileName
+  });
+  writeLocalProfileIndex([...readLocalProfileIndex(), profile]);
+  if (newLocalProfileInput) {
+    newLocalProfileInput.value = '';
+  }
+  await switchLocalProfile(profile.accountId);
+  showToast(`已创建本地档案：${profileName}`);
+}
+
+function createLocalProfileFromSettings() {
+  createLocalProfile(newLocalProfileInput?.value || '');
+}
+
+function changeLocalProfile(event) {
+  const accountId = event.target.value;
+  if (!accountId || accountId === state.userProfile.accountId) {
+    return;
+  }
+  switchLocalProfile(accountId);
+}
+
+function logoutUser() {
+  const defaultProfile = findLocalProfileByName(DEFAULT_LOCAL_PROFILE_NAME) || findLocalProfileById(DEFAULT_LOCAL_PROFILE_ID);
+  if (defaultProfile) {
+    switchLocalProfile(defaultProfile.accountId);
+  }
 }
 
 function chooseAvatar() {
@@ -2566,7 +2730,7 @@ async function openPetWindow() {
     return;
   }
 
-  const status = await window.petodo.openPetWindow({ openingAnimation: true });
+  const status = await window.petodo.openPetWindow({ openingAnimation: true, centerOnMainDisplay: true });
   showPetStatus(status);
 }
 
@@ -2654,6 +2818,8 @@ chooseAvatarButton?.addEventListener('click', chooseAvatar);
 profileAvatarButton?.addEventListener('click', chooseAvatar);
 profileAvatarInput?.addEventListener('change', updateAvatarFromFile);
 saveProfileButton?.addEventListener('click', saveProfileFromSettings);
+createLocalProfileButton?.addEventListener('click', createLocalProfileFromSettings);
+localProfileSelect?.addEventListener('change', changeLocalProfile);
 logoutButton?.addEventListener('click', logoutUser);
 windowMinimizeButton?.addEventListener('click', () => window.petodo?.minimizeMainWindow?.());
 windowMaximizeButton?.addEventListener('click', () => window.petodo?.toggleMaximizeMainWindow?.());
@@ -2726,6 +2892,7 @@ window.petodo?.onTodoStateUpdated?.((todoState) => {
 });
 
 async function initializeApp() {
+  saveUserProfile();
   await syncCurrentAccountId({ force: true });
   render();
 
