@@ -464,6 +464,11 @@ async function loadTodoState() {
   return legacyState;
 }
 
+function applyExternalTodoState(todoState = {}) {
+  applyTodoState(todoState);
+  render();
+}
+
 async function loadCountdownState() {
   const legacyGoals = loadCountdownList();
   state.countdownList = legacyGoals;
@@ -2710,6 +2715,14 @@ window.petodo?.onNavigateToPage?.((pageName) => {
       });
     }
   }
+});
+
+window.petodo?.onTodoStateUpdated?.((todoState) => {
+  if (!state.userProfile.isLoggedIn) {
+    return;
+  }
+
+  applyExternalTodoState(todoState);
 });
 
 async function initializeApp() {
