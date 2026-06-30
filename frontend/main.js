@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, Tray, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const { notifyTodoStateUpdated } = require('./todo_state_sync');
 const { centerBoundsInWorkArea } = require('./pet_window_position');
 
 let mainWindow = null;
@@ -1205,8 +1206,10 @@ ipcMain.handle('countdown-storage:save', (_event, goals = []) => {
 
 ipcMain.handle('todo-storage:load', () => loadTodoStateFromDisk());
 
-ipcMain.handle('todo-storage:save', (_event, todoState = {}) => {
-  return saveTodoStateToDisk(todoState);
+ipcMain.handle('todo-storage:save', (event, todoState = {}) => {
+  const savedState = saveTodoStateToDisk(todoState);
+  notifyTodoStateUpdated(BrowserWindow.getAllWindows(), event.sender, savedState);
+  return savedState;
 });
 
 ipcMain.handle('about:get-info', () => getAboutInfo());

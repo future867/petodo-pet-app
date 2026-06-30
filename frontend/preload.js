@@ -40,5 +40,14 @@ contextBridge.exposeInMainWorld('petodo', {
     ipcRenderer.on('navigation:set-page', listener);
     return () => ipcRenderer.removeListener('navigation:set-page', listener);
   },
+  onTodoStateUpdated: (callback) => {
+    if (typeof callback !== 'function') {
+      return () => {};
+    }
+
+    const listener = (_event, todoState) => callback(todoState);
+    ipcRenderer.on('todo-storage:updated', listener);
+    return () => ipcRenderer.removeListener('todo-storage:updated', listener);
+  },
   quitApp: () => ipcRenderer.invoke('app:quit')
 });
