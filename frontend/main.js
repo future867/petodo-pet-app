@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, Tray } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const { centerBoundsInWorkArea } = require('./pet_window_position');
 
 let mainWindow = null;
 let petWindow = null;
@@ -207,6 +208,25 @@ function getPetWindowSize(scalePercent = petWindowSettings.scalePercent) {
   const progress = (percent - lowerPoint.percent) / (upperPoint.percent - lowerPoint.percent);
   const side = Math.round(lowerPoint.side + (upperPoint.side - lowerPoint.side) * progress);
   return { width: side, height: side };
+}
+
+function getMainWindowDisplayWorkArea() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    return screen.getDisplayMatching(mainWindow.getBounds()).workArea;
+  }
+
+  return screen.getPrimaryDisplay().workArea;
+}
+
+function centerPetWindowOnMainDisplay() {
+  if (!petWindow || petWindow.isDestroyed()) {
+    return null;
+  }
+
+  const centeredBounds = centerBoundsInWorkArea(petWindow.getBounds(), getMainWindowDisplayWorkArea());
+  petWindow.setBounds(centeredBounds, false);
+  savePetWindowBounds();
+  return petWindow.getBounds();
 }
 
 function loadPetWindowBounds() {
@@ -879,6 +899,9 @@ function playPetWindowOpeningAnimation() {
 
 ipcMain.handle('pet-window:open', (_event, options = {}) => {
   createPetWindow();
+  if (options.centerOnMainDisplay === true) {
+    centerPetWindowOnMainDisplay();
+  }
   if (options.openingAnimation === true) {
     playPetWindowOpeningAnimation();
   }

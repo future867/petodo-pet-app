@@ -2561,7 +2561,7 @@ async function openPetWindow() {
     return;
   }
 
-  const status = await window.petodo.openPetWindow({ openingAnimation: true });
+  const status = await window.petodo.openPetWindow({ openingAnimation: true, centerOnMainDisplay: true });
   showPetStatus(status);
 }
 
