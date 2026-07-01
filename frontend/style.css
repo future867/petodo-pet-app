@@ -253,7 +253,6 @@ body:not(.is-authenticated) .app-shell {
 .note-card,
 .todo-form-card,
 .todo-list-card,
-.countdown-form-card,
 .countdown-list-card,
 .shop-item,
 .stat-card,
@@ -410,55 +409,6 @@ body:not(.is-authenticated) .app-shell {
   font-size: 14px;
 }
 
-.topbar {
-  display: flex;
-  grid-column: 2 / -1;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  min-width: 0;
-}
-
-.topbar-greeting h2 {
-  margin: 0;
-  color: var(--text-main);
-  font-size: 28px;
-  line-height: 1.1;
-}
-
-.topbar-greeting p {
-  margin: 8px 0 0;
-  color: var(--text-muted);
-  font-size: 14px;
-}
-
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.topbar-search {
-  display: flex;
-  width: min(280px, 28vw);
-  min-height: 46px;
-  align-items: center;
-  gap: 8px;
-  padding: 0 16px;
-  border: 1px solid rgba(222, 220, 209, 0.68);
-  border-radius: 999px;
-  color: var(--text-muted);
-  background: rgba(255, 254, 250, 0.9);
-}
-
-.topbar-search input {
-  width: 100%;
-  border: 0;
-  color: var(--text-main);
-  background: transparent;
-  outline: none;
-}
-
 .avatar-button {
   display: grid;
   width: 46px;
@@ -607,10 +557,6 @@ h2 {
 
 .timer-card {
   padding: 34px;
-}
-
-.timer-card.large {
-  padding-top: 44px;
 }
 
 .timer-meta {
@@ -1380,12 +1326,6 @@ h2 {
   font-size: 15px;
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-}
-
 .stat-card {
   padding: 18px;
 }
@@ -1848,21 +1788,12 @@ h2 {
   margin-top: 16px;
 }
 
-.journal-dashboard {
-  display: grid;
-  grid-template-columns: minmax(0, 0.92fr) minmax(360px, 1.08fr);
-  gap: 16px;
-  align-items: stretch;
-  min-width: 0;
-}
-
 .journal-left-column {
   display: grid;
   gap: 16px;
   min-width: 0;
 }
 
-.journal-summary-card,
 .journal-period-card,
 .journal-detail-card,
 .journal-recent-card {
@@ -1870,284 +1801,8 @@ h2 {
   min-width: 0;
 }
 
-.journal-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px 20px;
-  margin-top: 22px;
-}
-
-.journal-summary-grid article {
-  display: grid;
-  gap: 8px;
-  min-height: 70px;
-  align-content: start;
-}
-
-.journal-summary-grid span,
-.journal-total-focus span,
-.journal-mini-stats,
-.journal-rank-item span {
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.journal-summary-grid strong {
-  color: var(--text-main);
-  font-size: 30px;
-  line-height: 1.1;
-}
-
-.journal-bars {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(22px, 1fr);
-  gap: 6px;
-  min-height: 230px;
-  margin-top: 22px;
-  padding-top: 8px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain;
-  scrollbar-color: rgba(115, 114, 108, 0.28) transparent;
-  scrollbar-width: thin;
-  max-width: 100%;
-  min-width: 0;
-}
-
-.journal-bar-item {
-  display: grid;
-  min-width: 22px;
-  grid-template-rows: minmax(160px, 1fr) auto;
-  gap: 8px;
-  align-items: end;
-  justify-items: center;
-}
-
-.journal-bars::-webkit-scrollbar {
-  height: 6px;
-}
-
-.journal-bars::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: rgba(115, 114, 108, 0.24);
-}
-
-.journal-bars::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.journal-bars.is-dense {
-  grid-auto-columns: 24px;
-}
-
-.journal-bar-track {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-height: 160px;
-  overflow: hidden;
-  border-radius: 999px 999px 8px 8px;
-  background: var(--surface-soft);
-}
-
-.journal-bar-fill {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  border-radius: inherit;
-  background: var(--accent);
-}
-
-.journal-bar-item strong {
-  color: var(--text-muted);
-  font-size: 11px;
-}
-
-.journal-total-focus {
-  display: grid;
-  min-height: 190px;
-  place-items: center;
-  align-content: center;
-  gap: 8px;
-  margin-top: 18px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface-soft);
-}
-
-.journal-total-focus strong {
-  color: var(--text-main);
-  font-size: 42px;
-  line-height: 1;
-}
-
-.journal-mini-stats {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 14px;
-  margin-top: 14px;
-}
-
-.journal-mini-stats strong {
-  color: var(--text-main);
-}
-
-.journal-rank-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 28px;
-}
-
-.journal-rank-header h3 {
-  margin: 0;
-  color: var(--text-main);
-  font-size: 18px;
-}
-
-.journal-rank-header span {
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.journal-rank-list {
-  display: grid;
-  gap: 12px;
-  margin-top: 14px;
-}
-
-.journal-rank-item {
-  display: grid;
-  grid-template-columns: minmax(130px, 0.8fr) minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-}
-
-.journal-rank-item strong {
-  display: block;
-  color: var(--text-main);
-  font-size: 14px;
-}
-
-.journal-rank-meter {
-  height: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--surface-soft);
-}
-
-.journal-rank-meter span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--accent);
-}
-
-.journal-rank-item em {
-  color: var(--text-secondary);
-  font-style: normal;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.journal-rank-empty {
-  margin-top: 0;
-}
-
 .journal-recent-card {
   margin-top: 16px;
-}
-
-.day-list {
-  display: grid;
-  gap: 12px;
-  margin-top: 18px;
-}
-
-.journal-calendar {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 18px;
-}
-
-.calendar-weekday,
-.calendar-day {
-  display: grid;
-  min-height: 46px;
-  place-items: center;
-  border-radius: 999px;
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-
-.calendar-weekday {
-  min-height: 24px;
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.calendar-day {
-  border: 1px solid transparent;
-  background: var(--surface-soft);
-}
-
-.calendar-day strong {
-  color: inherit;
-  font-size: 14px;
-  line-height: 1;
-}
-
-.calendar-day small {
-  min-height: 12px;
-  color: var(--text-muted);
-  font-size: 10px;
-  line-height: 1;
-}
-
-.calendar-day.has-focus {
-  color: var(--text-main);
-  background: var(--accent-soft);
-}
-
-.calendar-day.has-focus small {
-  color: var(--accent);
-  font-weight: 700;
-}
-
-.calendar-day.is-today {
-  border-color: var(--text-main);
-  color: var(--surface);
-  background: var(--text-main);
-}
-
-.calendar-day.is-today small {
-  color: rgba(255, 254, 250, 0.75);
-}
-
-.calendar-day.is-empty {
-  background: transparent;
-}
-
-.day-row {
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) 64px;
-  gap: 12px;
-  align-items: center;
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-
-.day-row strong {
-  color: var(--text-main);
-  font-size: 13px;
-  text-align: right;
 }
 
 .bar {
@@ -2162,35 +1817,6 @@ h2 {
   height: 100%;
   border-radius: inherit;
   background: var(--accent);
-}
-
-.recent-list {
-  display: grid;
-  gap: 10px;
-  margin-top: 18px;
-}
-
-.recent-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.recent-item:last-child {
-  border-bottom: 0;
-}
-
-.recent-item strong {
-  color: var(--text-main);
-  font-size: 14px;
-}
-
-.recent-item span {
-  color: var(--text-muted);
-  font-size: 13px;
 }
 
 .settings-card {
@@ -2577,10 +2203,6 @@ h2 {
     grid-column: 2;
   }
 
-  .topbar {
-    grid-column: 2;
-  }
-
   .companion-panel {
     grid-column: 2;
     grid-row: auto;
@@ -2590,12 +2212,7 @@ h2 {
     position: static;
   }
 
-  .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .todo-stats,
-  .journal-dashboard,
   .journal-split,
   .journal-month-layout,
   .todo-layout {
@@ -2654,7 +2271,6 @@ h2 {
     height: 44px;
   }
 
-  .topbar,
   .content,
   .companion-panel {
     grid-column: 1;
@@ -2676,10 +2292,6 @@ h2 {
 
   .journal-tabs {
     flex-wrap: wrap;
-  }
-
-  .journal-summary-grid {
-    grid-template-columns: 1fr;
   }
 
   .journal-mode-heading {
@@ -2711,23 +2323,6 @@ h2 {
 
   .journal-year-track {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .journal-rank-item {
-    grid-template-columns: 1fr;
-  }
-
-  .topbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .topbar-actions {
-    justify-content: space-between;
-  }
-
-  .topbar-search {
-    width: 100%;
   }
 
   .countdown-header {
@@ -2813,8 +2408,7 @@ h2 {
     width: auto;
   }
 
-  .timer-card,
-  .timer-card.large {
+  .timer-card {
     padding: 24px;
   }
 
@@ -2834,10 +2428,6 @@ h2 {
     justify-items: start;
   }
 
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
   .stat-card.wide {
     grid-column: span 1;
   }
@@ -2846,11 +2436,4 @@ h2 {
     grid-template-columns: 1fr;
   }
 
-  .journal-calendar {
-    gap: 6px;
-  }
-
-  .calendar-day {
-    min-height: 42px;
-  }
 }

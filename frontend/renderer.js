@@ -967,49 +967,7 @@ async function loadAccountSessionData() {
   }
 }
 
-function resetSessionData() {
-  stopTimer();
-  state.remainingSeconds = FOCUS_SECONDS;
-  state.timerMode = 'idle';
-  state.phase = 'Focus Session';
-  state.isRunning = false;
-  state.completedToday = 0;
-  state.totalFocusSeconds = 0;
-  state.focusRecords = [];
-  state.todoList = [];
-  state.countdownList = [];
-  state.currentTaskId = '';
-  state.todoListDate = '';
-  state.petState = DEFAULT_IDLE_STATE;
-  state.petReason = '';
-  state.hunger = 80;
-  state.mood = '平静';
-  state.points = 0;
-  state.hasLoadedAppStatus = false;
-  state.lastCompletedFocusKey = '';
-  state.zeroRefreshRequested = false;
-}
-
-async function applyAuthenticatedAccount(account) {
-  const savedProfile = loadAccountProfile(account.account_id);
-  state.userProfile = {
-    isLoggedIn: true,
-    accountId: account.account_id,
-    accountName: account.account_name,
-    name: savedProfile.name || account.display_name || account.account_name,
-    avatar: savedProfile.avatar || ''
-  };
-  saveUserProfile();
-  await syncCurrentAccountId({ force: true });
-  await loadAccountSessionData();
-  setPage('home');
-  renderProfile();
-  render();
-  await refreshAppStatus();
-  checkTodoRollover();
-}
-
-async function authenticateUser(endpoint, successMessage) {
+async function authenticateUser() {
   const account = loginAccountInput.value.trim();
 
   if (!account) {
@@ -1030,11 +988,11 @@ async function authenticateUser(endpoint, successMessage) {
 
 function loginUser(event) {
   event.preventDefault();
-  authenticateUser('/auth/login', (account) => `欢迎回来，${account.display_name}`);
+  authenticateUser();
 }
 
 function registerUser() {
-  authenticateUser('/auth/register', (account) => `已创建账号，${account.display_name}`);
+  authenticateUser();
 }
 
 async function saveProfileFromSettings() {
@@ -1698,26 +1656,6 @@ function getRecordsByDate() {
     map[key] = (map[key] || 0) + (Number(record.focus_seconds) || 0);
     return map;
   }, {});
-}
-
-function buildRecentSevenDays() {
-  const recordsByDate = getRecordsByDate();
-  const today = new Date();
-  const days = [];
-
-  for (let index = 6; index >= 0; index -= 1) {
-    const date = addDays(today, -index);
-    const key = toDateKey(date);
-    const seconds = recordsByDate[key] || 0;
-    days.push({
-      key,
-      label: date.toLocaleDateString('en-US', { weekday: 'short' }),
-      seconds,
-      minutes: Math.round(seconds / 60)
-    });
-  }
-
-  return days;
 }
 
 function calculateStudyStreak() {
